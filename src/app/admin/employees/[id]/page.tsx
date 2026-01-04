@@ -8,6 +8,8 @@ import { Button } from "@/components/ui/button";
 import { RegenerateBadgeButton } from "./regenerate-badge-button";
 import { BadgeQRCode } from "./badge-qr-code";
 import { UserLinkManager } from "./user-link-manager";
+import { RevokeCertificationDialog } from "@/components/certifications/revoke-dialog";
+import NextImage from "next/image";
 
 export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -25,8 +27,8 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
     let gapError = null;
     try {
         gaps = await getEmployeeGaps(id);
-    } catch (e: any) {
-        gapError = e.message;
+    } catch (e: unknown) {
+        gapError = e instanceof Error ? e.message : "Unknown error";
     }
 
     // Stats
@@ -39,9 +41,9 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
             {/* Header / Profile Card */}
             <div className="rounded-xl border bg-card text-card-foreground shadow-sm">
                 <div className="p-6 md:p-8 flex flex-col md:flex-row gap-6 items-start md:items-center">
-                     <div className="flex h-24 w-24 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground text-3xl font-bold shrink-0">
+                     <div className="flex h-24 w-24 items-center justify-center rounded-full bg-secondary/80 text-secondary-foreground text-3xl font-bold shrink-0 overflow-hidden relative">
                         {employee.photoUrl ? (
-                                <img src={employee.photoUrl} alt={employee.name} className="h-full w-full rounded-full object-cover" />
+                                <NextImage src={employee.photoUrl} alt={employee.name} width={96} height={96} className="object-cover" />
                         ) : (
                             <span>{employee.name.substring(0,2).toUpperCase()}</span>
                         )}
@@ -155,9 +157,22 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                                         )}
                                     </td>
                                     <td className="p-4 text-right">
-                                        <Button size="sm" variant={gap.status === 'ok' ? "outline" : "default"}>
-                                            {gap.status === 'ok' ? "Recertify" : "Certify"}
-                                        </Button>
+                                        <div className="flex justify-end gap-2">
+                                            {gap.employeeSkillId && (
+                                                <RevokeCertificationDialog 
+                                                    employeeSkillId={gap.employeeSkillId} 
+                                                    skillName={gap.skillName}
+                                                    trigger={
+                                                        <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive hover:bg-destructive/10">
+                                                            Revoke
+                                                        </Button>
+                                                    }
+                                                />
+                                            )}
+                                            <Button size="sm" variant={gap.status === 'ok' ? "outline" : "default"}>
+                                                {gap.status === 'ok' ? "Recertify" : "Certify"}
+                                            </Button>
+                                        </div>
                                     </td>
                                 </tr>
                             ))}

@@ -10,7 +10,7 @@ import {
 	Users,
     Shield,
     FileText,
-    Settings,
+    Grid3X3,
     LayoutDashboard,
     LogOut,
     CheckCircle
@@ -54,6 +54,12 @@ export function Sidebar({ className }: SidebarProps) {
 			href: "/admin/requirements",
             show: permissions["skills:view"],
 		},
+        {
+            title: "Skill Matrix",
+            icon: Grid3X3,
+            href: "/admin/matrix",
+            show: permissions["skills:view"],
+        },
 		{
 			title: "User Access",
 			icon: Shield,

@@ -15,6 +15,7 @@ export type GapStatus =
     | "revoked";
 
 export interface SkillGap {
+    employeeSkillId?: string;
     skillId: string;
     skillName: string;
     skillCode: string | null;
@@ -98,8 +99,10 @@ export async function getEmployeeGaps(employeeId: string): Promise<SkillGap[]> {
         let achievedAt = undefined;
         let expiresAt = undefined;
         let notes = undefined;
+        let employeeSkillId = undefined;
 
         if (held) {
+            employeeSkillId = held.id;
             achievedLevel = held.achievedLevel;
             achievedAt = held.achievedAt;
             expiresAt = held.expiresAt;
@@ -127,6 +130,7 @@ export async function getEmployeeGaps(employeeId: string): Promise<SkillGap[]> {
         }
 
         gaps.push({
+            employeeSkillId,
             skillId: req.skillId,
             skillName: req.skill.name,
             skillCode: req.skill.code || null,
