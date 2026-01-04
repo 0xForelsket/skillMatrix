@@ -4,7 +4,7 @@
  * Reusable filters and utilities for common query patterns.
  */
 
-import { isNull, type SQL } from "drizzle-orm";
+import { isNull, type SQL, type SQLWrapper } from "drizzle-orm";
 
 /**
  * Filter for active (non-deleted) records.
@@ -14,9 +14,8 @@ import { isNull, type SQL } from "drizzle-orm";
  * db.query.employees.findMany({ where: withActive(employees) })
  *
  * @example
- * db.select().from(employees).where(withActive(employees))
- */
-export function withActive<T extends { deletedAt: unknown }>(
+ * db.select().from(employees).where(withActive(employees))\n */
+export function withActive<T extends { deletedAt: SQLWrapper }>(
 	table: T,
 ): SQL<unknown> {
 	return isNull(table.deletedAt);

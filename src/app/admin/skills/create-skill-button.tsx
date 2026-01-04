@@ -51,6 +51,7 @@ export function CreateSkillButton() {
                 code: rawData.code as string,
                 description: rawData.description as string,
                 validityMonths: rawData.validityMonths ? Number(rawData.validityMonths) : null,
+                maxLevel: rawData.maxLevel ? Number(rawData.maxLevel) : 1,
                 performerId: user?.id,
             });
             

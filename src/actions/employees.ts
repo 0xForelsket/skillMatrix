@@ -1,13 +1,36 @@
 
 "use server";
 
+import { headers } from "next/headers";
 import { db } from "@/db";
-import { employees, sites, departments, roles } from "@/db/schema";
+import { employees } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { logAudit, getContext } from "@/lib/audit";
-import { eq, desc, asc } from "drizzle-orm";
+import { logAudit, type AuditContext } from "@/lib/audit";
+import { eq, asc } from "drizzle-orm";
 import { nanoid } from "nanoid";
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+async function getContext(performerId?: string): Promise<AuditContext> {
+	try {
+		const headersList = await headers();
+		return {
+			userId: performerId,
+			ipAddress: headersList.get("x-forwarded-for") || undefined,
+			userAgent: headersList.get("user-agent") || undefined,
+		};
+	} catch (_) {
+		// Fallback for non-request environments (scripts, seeders)
+		return { userId: performerId };
+	}
+}
+
+// =============================================================================
+// Schemas
+// =============================================================================
 
 const createEmployeeSchema = z.object({
     name: z.string().min(2),

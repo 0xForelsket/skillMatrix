@@ -39,17 +39,29 @@ export function doesRequirementApply(
     return true;
 }
 
+export type EnrichedRequirement = SkillRequirement & {
+    skill: Skill;
+};
+
 /**
  * Filter a list of requirements to find those applicable to an employee.
+ * This overload preserves the enriched type when skill relations are included.
  */
 export function getApplicableRequirements(
     employee: Employee,
     projectIds: string[],
+    allRequirements: EnrichedRequirement[]
+): EnrichedRequirement[];
+export function getApplicableRequirements(
+    employee: Employee,
+    projectIds: string[],
     allRequirements: SkillRequirement[]
-): SkillRequirement[] {
+): SkillRequirement[];
+export function getApplicableRequirements<T extends SkillRequirement>(
+    employee: Employee,
+    projectIds: string[],
+    allRequirements: T[]
+): T[] {
     return allRequirements.filter(req => doesRequirementApply(employee, projectIds, req));
 }
 
-export type EnrichedRequirement = SkillRequirement & {
-    skill: Skill;
-};

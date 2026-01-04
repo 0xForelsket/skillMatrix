@@ -17,7 +17,8 @@ export type AuditAction =
 	| "certify"
 	| "login"
 	| "logout"
-	| "login_failed";
+	| "login_failed"
+	| "permission_denied";
 
 export type EntityType =
 	| "site"
@@ -30,7 +31,8 @@ export type EntityType =
 	| "skill_revision"
 	| "skill_requirement"
 	| "employee_skill"
-	| "attachment";
+	| "attachment"
+	| "session";
 
 export interface AuditContext {
 	userId?: string | null;
@@ -159,4 +161,139 @@ export async function withAudit<T>(
 	});
 
 	return result;
+}
+
+// ============================================================================
+// Auth-specific Audit Helpers
+// ============================================================================
+
+export interface AuthAuditDetails {
+	email?: string;
+	reason?: string;
+	provider?: string;
+	[key: string]: unknown;
+}
+
+/**
+ * Log a successful login event.
+ *
+ * @example
+ * await logAuthLogin({
+ *   userId: user.id,
+ *   details: { email: user.email, provider: 'credentials' }
+ * });
+ */
+export async function logAuthLogin({
+	userId,
+	details = {},
+	context = {},
+}: {
+	userId: string;
+	details?: AuthAuditDetails;
+	context?: AuditContext;
+}): Promise<void> {
+	await logAudit({
+		action: "login",
+		entityType: "session",
+		entityId: userId,
+		newValue: {
+			timestamp: new Date().toISOString(),
+			...details,
+		},
+		context: { ...context, userId },
+	});
+}
+
+/**
+ * Log a failed login attempt (invalid credentials, disabled account, etc.).
+ *
+ * @example
+ * await logAuthLoginFailed({
+ *   email: 'user@example.com',
+ *   reason: 'invalid_password',
+ *   context: { ipAddress: '192.168.1.1' }
+ * });
+ */
+export async function logAuthLoginFailed({
+	email,
+	reason,
+	context = {},
+}: {
+	email: string;
+	reason: "invalid_credentials" | "account_disabled" | "account_not_found" | "validation_error";
+	context?: AuditContext;
+}): Promise<void> {
+	await logAudit({
+		action: "login_failed",
+		entityType: "session",
+		entityId: "anonymous",
+		newValue: {
+			email,
+			reason,
+			timestamp: new Date().toISOString(),
+		},
+		context,
+	});
+}
+
+/**
+ * Log a logout event.
+ *
+ * @example
+ * await logAuthLogout({ userId: user.id });
+ */
+export async function logAuthLogout({
+	userId,
+	context = {},
+}: {
+	userId: string;
+	context?: AuditContext;
+}): Promise<void> {
+	await logAudit({
+		action: "logout",
+		entityType: "session",
+		entityId: userId,
+		newValue: {
+			timestamp: new Date().toISOString(),
+		},
+		context: { ...context, userId },
+	});
+}
+
+/**
+ * Log a permission denied event (attempted unauthorized access).
+ *
+ * @example
+ * await logAuthPermissionDenied({
+ *   userId: user.id,
+ *   resource: '/admin/users',
+ *   requiredRole: 'admin',
+ *   userRole: 'viewer'
+ * });
+ */
+export async function logAuthPermissionDenied({
+	userId,
+	resource,
+	requiredRole,
+	userRole,
+	context = {},
+}: {
+	userId?: string | null;
+	resource: string;
+	requiredRole?: string;
+	userRole?: string;
+	context?: AuditContext;
+}): Promise<void> {
+	await logAudit({
+		action: "permission_denied",
+		entityType: "session",
+		entityId: userId ?? "anonymous",
+		newValue: {
+			resource,
+			requiredRole,
+			userRole,
+			timestamp: new Date().toISOString(),
+		},
+		context: { ...context, userId },
+	});
 }
