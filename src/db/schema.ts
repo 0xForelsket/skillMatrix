@@ -21,6 +21,7 @@ import {
 	text,
 	timestamp,
 	uniqueIndex,
+    primaryKey,
 } from "drizzle-orm/pg-core";
 
 import { generateId } from "@/lib/id";
@@ -129,6 +130,27 @@ export const employees = pgTable(
 		index("emp_site_idx").on(t.siteId),
 		index("emp_dept_idx").on(t.departmentId),
 		index("emp_status_idx").on(t.status),
+	],
+);
+
+// Join table for Employees and Projects (Many-to-Many)
+export const employeeProjects = pgTable(
+	"employee_projects",
+	{
+		employeeId: text("employee_id")
+			.references(() => employees.id)
+			.notNull(),
+		projectId: text("project_id")
+			.references(() => projects.id)
+			.notNull(),
+		assignedAt: timestamp("assigned_at", { withTimezone: true })
+			.defaultNow()
+			.notNull(),
+	},
+	(t) => [
+		primaryKey({ columns: [t.employeeId, t.projectId] }),
+		index("empproj_emp_idx").on(t.employeeId),
+		index("empproj_proj_idx").on(t.projectId),
 	],
 );
 
@@ -315,12 +337,13 @@ export const rolesRelations = relations(roles, ({ many }) => ({
 	employees: many(employees),
 }));
 
-export const projectsRelations = relations(projects, ({ one }) => ({
+export const projectsRelations = relations(projects, ({ one, many }) => ({
 	site: one(sites, { fields: [projects.siteId], references: [sites.id] }),
 	department: one(departments, {
 		fields: [projects.departmentId],
 		references: [departments.id],
 	}),
+    employees: many(employeeProjects),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -339,6 +362,18 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
 	}),
 	role: one(roles, { fields: [employees.roleId], references: [roles.id] }),
 	skills: many(employeeSkills),
+    projects: many(employeeProjects),
+}));
+
+export const employeeProjectsRelations = relations(employeeProjects, ({ one }) => ({
+    employee: one(employees, {
+        fields: [employeeProjects.employeeId],
+        references: [employees.id],
+    }),
+    project: one(projects, {
+        fields: [employeeProjects.projectId],
+        references: [projects.id],
+    }),
 }));
 
 export const skillsRelations = relations(skills, ({ many }) => ({
@@ -462,6 +497,9 @@ export type NewUser = typeof users.$inferInsert;
 
 export type Employee = typeof employees.$inferSelect;
 export type NewEmployee = typeof employees.$inferInsert;
+
+export type EmployeeProject = typeof employeeProjects.$inferSelect;
+export type NewEmployeeProject = typeof employeeProjects.$inferInsert;
 
 export type Skill = typeof skills.$inferSelect;
 export type NewSkill = typeof skills.$inferInsert;

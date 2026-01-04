@@ -36,7 +36,8 @@ export async function getEmployeeGaps(employeeId: string): Promise<SkillGap[]> {
                     skill: true,
                     revision: true
                 }
-            }
+            },
+            projects: true
         }
     });
 
@@ -44,20 +45,24 @@ export async function getEmployeeGaps(employeeId: string): Promise<SkillGap[]> {
         throw new Error("Employee not found");
     }
 
-    // 2. Fetch all requirements that *could* apply (optimization: filter by site/dept/role in DB?)
+    const projectIds = employee.projects.map(p => p.projectId);
+
+    // 2. Fetch all requirements that *could* apply (optimization: filter by site/dept/role/project in DB?)
     // For now, fetching all requirements is safer to ensure complex logic in getApplicableRequirements is used,
     // but in production with thousands of requirements, we should pre-filter.
     // Let's do a loose pre-filter.
     const requirements = await db.query.skillRequirements.findMany({
-        where: (t, { eq, or, isNull, and }) => or(
+        where: (t, { eq, or, isNull, and, inArray }) => or(
             // Global
-            and(isNull(t.siteId), isNull(t.departmentId), isNull(t.roleId)),
+            and(isNull(t.siteId), isNull(t.departmentId), isNull(t.roleId), isNull(t.projectId)),
             // Matches Site
             eq(t.siteId, employee.siteId),
             // Matches Department
             eq(t.departmentId, employee.departmentId || ""),
             // Matches Role
-            eq(t.roleId, employee.roleId || "")
+            eq(t.roleId, employee.roleId || ""),
+            // Matches Project
+            projectIds.length > 0 ? inArray(t.projectId, projectIds) : undefined
         ),
         with: {
             skill: true
@@ -65,7 +70,7 @@ export async function getEmployeeGaps(employeeId: string): Promise<SkillGap[]> {
     });
 
     // 3. Narrow down to exactly applicable ones
-    const applicableRequirements = getApplicableRequirements(employee, requirements);
+    const applicableRequirements = getApplicableRequirements(employee, projectIds, requirements);
 
     // 4. Map existing skills for quick lookup
     const heldSkillsMap = new Map();

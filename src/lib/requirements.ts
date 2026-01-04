@@ -13,6 +13,7 @@ import {
  */
 export function doesRequirementApply(
     employee: Employee,
+    projectIds: string[],
     requirement: SkillRequirement
 ): boolean {
     // 1. Site Scope
@@ -31,18 +32,8 @@ export function doesRequirementApply(
     }
 
     // 4. Project Scope
-    // Note: Employee table doesn't have direct project link in schema we saw earlier?
-    // Let's re-verify the schema. The employee table has site, dept, role.
-    // Projects are likely many-to-many or handled differently.
-    // Checking schema.ts... 
-    // Schema doesn't show a direct project_id on employee, nor a many-to-many table in what I viewed.
-    // Wait, let me check relations in schema.ts again.
-    
-    // If project scope is used, but we can't link employee to project, we assume false for now
-    // unless there is a mechanism I missed.
-    if (requirement.projectId) {
-        // TODO: Implement project assignment checking
-        return false; 
+    if (requirement.projectId && !projectIds.includes(requirement.projectId)) {
+        return false;
     }
 
     return true;
@@ -53,9 +44,10 @@ export function doesRequirementApply(
  */
 export function getApplicableRequirements(
     employee: Employee,
+    projectIds: string[],
     allRequirements: SkillRequirement[]
 ): SkillRequirement[] {
-    return allRequirements.filter(req => doesRequirementApply(employee, req));
+    return allRequirements.filter(req => doesRequirementApply(employee, projectIds, req));
 }
 
 export type EnrichedRequirement = SkillRequirement & {
