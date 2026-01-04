@@ -1,5 +1,7 @@
 "use client";
 
+import { recordAttachment } from "@/actions/storage";
+import { FileUpload } from "@/components/ui/file-upload";
 import {
 	Activity,
 	Briefcase,
@@ -269,23 +271,52 @@ export function EmployeeForm({
 							</select>
 						</div>
 
-						{/* Photo URL */}
+						{/* Photo Upload */}
 						<div className="space-y-2">
-							<label
-								htmlFor="photoUrl"
-								className="text-sm font-semibold text-slate-400 flex items-center gap-2"
-							>
-								<ImageIcon className="h-4 w-4" /> Profile Photo URL
+							<label className="text-sm font-semibold text-slate-400 flex items-center gap-2">
+								<ImageIcon className="h-4 w-4" /> Profile Photo
 							</label>
-							<input
-								id="photoUrl"
-								name="photoUrl"
-								type="url"
-								placeholder="https://..."
-								value={formData.photoUrl || ""}
-								onChange={handleChange}
-								className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all"
-							/>
+
+							{formData.photoUrl ? (
+								<div className="flex items-center gap-4 p-4 rounded-xl border border-white/10 bg-slate-900/50">
+									<div className="relative h-16 w-16 rounded-full overflow-hidden border border-white/20">
+										<img
+											src={formData.photoUrl}
+											alt="Preview"
+											className="h-full w-full object-cover"
+										/>
+									</div>
+									<div className="flex-1">
+										<p className="text-sm font-medium text-white">
+											Current Photo
+										</p>
+										<button
+											type="button"
+											onClick={() => setFormData((p) => ({ ...p, photoUrl: "" }))}
+											className="text-xs text-red-400 hover:text-red-300 transition-colors"
+										>
+											Remove Photo
+										</button>
+									</div>
+								</div>
+							) : (
+								<FileUpload
+									accept="image/*"
+									label="Upload Profile Photo"
+									onUploadComplete={async (url, key, fileData) => {
+										setFormData((p) => ({ ...p, photoUrl: url }));
+										// Optional: Record in attachments table for audit
+										await recordAttachment({
+											name: fileData.name,
+											key,
+											url,
+											mimeType: fileData.type,
+											size: fileData.size,
+											userId: performerId,
+										});
+									}}
+								/>
+							)}
 							{errors.photoUrl && (
 								<p className="text-xs text-red-400">{errors.photoUrl[0]}</p>
 							)}
