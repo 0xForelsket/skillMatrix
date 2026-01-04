@@ -273,9 +273,9 @@ export function EmployeeForm({
 
 						{/* Photo Upload */}
 						<div className="space-y-2">
-							<label className="text-sm font-semibold text-slate-400 flex items-center gap-2">
+							<div className="text-sm font-semibold text-slate-400 flex items-center gap-2">
 								<ImageIcon className="h-4 w-4" /> Profile Photo
-							</label>
+							</div>
 
 							{formData.photoUrl ? (
 								<div className="flex items-center gap-4 p-4 rounded-xl border border-white/10 bg-slate-900/50">

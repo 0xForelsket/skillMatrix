@@ -22,7 +22,7 @@ async function getContext() {
 export async function initiateUpload(
 	filename: string,
 	contentType: string,
-	size: number,
+	_size: number,
 ) {
 	// Basic validation
 	if (!filename || !contentType) {

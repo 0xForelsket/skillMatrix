@@ -22,6 +22,7 @@ function Modal({
 			<div className="w-full max-w-md bg-card rounded-xl border shadow-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
 				<div className="flex justify-end p-2">
 					<button
+						type="button"
 						onClick={onClose}
 						className="text-muted-foreground hover:text-foreground"
 					>
@@ -44,7 +45,7 @@ export function CreateUserButton() {
 	const { user } = useCurrentUser();
 	const [isOpen, setIsOpen] = useState(false);
 	const [state, formAction, isPending] = useActionState(
-		async (prevState: any, formData: FormData) => {
+		async (_prevState: any, formData: FormData) => {
 			const rawData = Object.fromEntries(formData);
 			const result = await createUser({
 				email: rawData.email as string,

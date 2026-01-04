@@ -1,12 +1,5 @@
 import { format } from "date-fns";
-import {
-	BadgeCheck,
-	Ban,
-	MoreHorizontal,
-	Search,
-	Shield,
-	User as UserIcon,
-} from "lucide-react";
+import { MoreHorizontal, Search, Shield, User as UserIcon } from "lucide-react";
 import { listUsers } from "@/actions/users";
 import { Button } from "@/components/ui/button";
 import { CreateUserButton } from "./create-user-button";

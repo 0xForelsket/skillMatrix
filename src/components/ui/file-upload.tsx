@@ -1,12 +1,6 @@
 "use client";
 
-import {
-	AlertCircle,
-	CheckCircle2,
-	FileIcon,
-	Loader2,
-	Upload,
-} from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import { initiateUpload } from "@/actions/storage";

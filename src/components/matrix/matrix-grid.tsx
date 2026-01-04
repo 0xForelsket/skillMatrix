@@ -14,7 +14,7 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { MatrixCell, MatrixData, MatrixStatus } from "@/lib/matrix";
+import type { MatrixCell, MatrixData } from "@/lib/matrix";
 import { cn } from "@/lib/utils";
 
 interface MatrixGridProps {
@@ -219,6 +219,7 @@ function CellContent({ cell }: { cell?: MatrixCell }) {
 								</span>
 								<ul className="mt-1 space-y-1">
 									{requirementSources.map((src, i) => (
+										// biome-ignore lint/suspicious/noArrayIndexKey: List is static
 										<li key={`${src}-${i}`} className="text-xs text-slate-300">
 											{src}
 										</li>

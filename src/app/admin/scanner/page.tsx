@@ -1,4 +1,4 @@
-import { Award, LucideQrCode } from "lucide-react";
+import { LucideQrCode } from "lucide-react";
 import { BadgeScanner } from "./badge-scanner";
 
 export const metadata = {

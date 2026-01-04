@@ -1,18 +1,6 @@
-import { and, eq, isNull, or } from "drizzle-orm";
 import { db } from "@/db";
-import {
-	type Employee,
-	employeeSkills,
-	skillRequirements,
-	skillRevisions,
-	skills,
-} from "@/db/schema";
 import { getApplicableRequirements } from "./requirements";
-import {
-	calculateExpiresAt,
-	isCertificationActive,
-	isExpiringSoon,
-} from "./skills";
+import { isCertificationActive, isExpiringSoon } from "./skills";
 
 export type GapStatus =
 	| "ok"
@@ -119,10 +107,10 @@ export async function getEmployeeGaps(employeeId: string): Promise<SkillGap[]> {
 		// Default: Missing
 		let status: GapStatus = "missing";
 		let achievedLevel = 0;
-		let achievedAt;
-		let expiresAt;
-		let notes;
-		let employeeSkillId;
+		let achievedAt: Date | undefined;
+		let expiresAt: Date | null | undefined;
+		let notes: string | undefined;
+		let employeeSkillId: string | undefined;
 
 		if (held) {
 			employeeSkillId = held.id;

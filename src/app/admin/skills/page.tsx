@@ -1,6 +1,5 @@
 import {
 	AlertCircle,
-	BookOpen,
 	Clock,
 	FileText,
 	MoreHorizontal,

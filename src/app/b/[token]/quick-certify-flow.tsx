@@ -2,10 +2,8 @@
 
 import {
 	Award,
-	Calendar,
 	Check,
 	Loader2,
-	LucideAward,
 	MessageSquare,
 	Plus,
 	Star,

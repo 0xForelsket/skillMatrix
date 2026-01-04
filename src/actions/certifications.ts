@@ -33,7 +33,7 @@ export async function revokeCertification(data: z.infer<typeof revokeSchema>) {
 	const session = await auth();
 	try {
 		checkPermission(session, "certifications:revoke");
-	} catch (e) {
+	} catch (_e) {
 		return { success: false, error: "Permission denied" };
 	}
 
@@ -103,7 +103,7 @@ export async function certifySkill(data: z.infer<typeof certifySkillSchema>) {
 	// Check if user has permission to certify
 	try {
 		checkPermission(session, "certifications:create");
-	} catch (e) {
+	} catch (_e) {
 		return { success: false, error: "Permission denied" };
 	}
 
