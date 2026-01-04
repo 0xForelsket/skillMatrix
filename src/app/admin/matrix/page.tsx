@@ -1,6 +1,6 @@
 
 import { getMatrixData } from "@/lib/matrix";
-import { MatrixGrid } from "@/components/matrix/matrix-grid";
+import { MatrixView } from "@/components/matrix/matrix-view";
 import { Grid3X3, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
@@ -30,7 +30,7 @@ export default async function MatrixPage() {
             </div>
 
             <div className="flex-1 min-h-0">
-                <MatrixGrid data={data} />
+                <MatrixView data={data} />
             </div>
         </div>
     );
