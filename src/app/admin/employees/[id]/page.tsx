@@ -2,9 +2,10 @@
 import { getEmployee } from "@/actions/employees";
 import { getEmployeeGaps, type SkillGap } from "@/lib/gap-analysis";
 import { notFound } from "next/navigation";
-import { BadgeCheck, AlertTriangle, XCircle, Clock, MapPin, Building2, Briefcase, Calendar } from "lucide-react";
+import { BadgeCheck, AlertTriangle, XCircle, Clock, MapPin, Building2, Briefcase } from "lucide-react";
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
+import { RegenerateBadgeButton } from "./regenerate-badge-button";
 
 export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -71,6 +72,9 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                             "text-red-600"
                         }`}>{rate}%</div>
                         <div className="text-xs text-muted-foreground">{complianceOk} / {totalReqs} requirements met</div>
+                        <div className="pt-2">
+                            <RegenerateBadgeButton employeeId={employee.id} employeeName={employee.name} />
+                        </div>
                     </div>
                 </div>
             </div>

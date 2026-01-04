@@ -146,3 +146,72 @@ export async function getOrganizationMetadata() {
         roles: roleList
     };
 }
+
+/**
+ * Regenerate an employee's badge token.
+ * This invalidates the old QR code and generates a new one.
+ * Use when a badge is lost, stolen, or needs security rotation.
+ */
+export async function regenerateBadgeToken(data: {
+	employeeId: string;
+	performerId?: string;
+	reason?: string;
+}) {
+	const { employeeId, performerId, reason } = data;
+	const context = await getContext(performerId);
+
+	try {
+		// Fetch existing employee
+		const existing = await db.query.employees.findFirst({
+			where: eq(employees.id, employeeId),
+		});
+
+		if (!existing) {
+			return { success: false, error: "Employee not found" };
+		}
+
+		const oldToken = existing.badgeToken;
+		const newToken = nanoid(32);
+
+		// Update the badge token
+		const [updated] = await db
+			.update(employees)
+			.set({
+				badgeToken: newToken,
+				updatedAt: new Date(),
+			})
+			.where(eq(employees.id, employeeId))
+			.returning();
+
+		// Audit log with redacted tokens (show first/last 4 chars only)
+		await logAudit({
+			action: "update",
+			entityType: "employee",
+			entityId: employeeId,
+			oldValue: {
+				badgeToken: `${oldToken.slice(0, 4)}...${oldToken.slice(-4)}`,
+				reason: "Badge token regeneration",
+			},
+			newValue: {
+				badgeToken: `${newToken.slice(0, 4)}...${newToken.slice(-4)}`,
+				reason: reason || "Security rotation",
+			},
+			context,
+		});
+
+		revalidatePath(`/admin/employees/${employeeId}`);
+		revalidatePath("/admin/employees");
+
+		return {
+			success: true,
+			data: {
+				employeeId: updated.id,
+				newBadgeToken: newToken,
+			},
+		};
+	} catch (error) {
+		console.error("Failed to regenerate badge token:", error);
+		return { success: false, error: "Failed to regenerate badge token" };
+	}
+}
+
