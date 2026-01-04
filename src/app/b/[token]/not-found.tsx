@@ -2,7 +2,7 @@
  * 404 Page for Invalid Badge Tokens
  */
 
-import { ShieldX, ArrowLeft } from "lucide-react";
+import { ArrowLeft, ShieldX } from "lucide-react";
 import Link from "next/link";
 
 export default function BadgeNotFound() {
@@ -14,11 +14,9 @@ export default function BadgeNotFound() {
 						<ShieldX className="h-16 w-16 text-red-500" />
 					</div>
 				</div>
-				
+
 				<div className="space-y-2">
-					<h1 className="text-2xl font-bold text-white">
-						Badge Not Found
-					</h1>
+					<h1 className="text-2xl font-bold text-white">Badge Not Found</h1>
 					<p className="text-slate-400">
 						This badge URL is invalid or the employee record has been removed.
 						Please verify the QR code and try scanning again.
@@ -36,7 +34,8 @@ export default function BadgeNotFound() {
 				</div>
 
 				<p className="text-xs text-slate-600">
-					If you believe this is an error, please contact your site administrator.
+					If you believe this is an error, please contact your site
+					administrator.
 				</p>
 			</div>
 		</div>

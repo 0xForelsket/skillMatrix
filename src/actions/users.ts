@@ -1,13 +1,13 @@
 "use server";
 
+import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { type AuditContext, logAudit } from "@/lib/audit";
 import { hashPassword } from "@/lib/password";
-import { logAudit, type AuditContext } from "@/lib/audit";
 
 // =============================================================================
 // Schemas
@@ -16,12 +16,16 @@ import { logAudit, type AuditContext } from "@/lib/audit";
 const createUserSchema = z.object({
 	email: z.string().email(),
 	password: z.string().min(8, "Password must be at least 8 characters"),
-	appRole: z.enum(["admin", "skill_manager", "trainer", "auditor", "viewer"]).default("viewer"),
+	appRole: z
+		.enum(["admin", "skill_manager", "trainer", "auditor", "viewer"])
+		.default("viewer"),
 });
 
 const updateUserSchema = z.object({
 	id: z.string(),
-	appRole: z.enum(["admin", "skill_manager", "trainer", "auditor", "viewer"]).optional(),
+	appRole: z
+		.enum(["admin", "skill_manager", "trainer", "auditor", "viewer"])
+		.optional(),
 	status: z.enum(["active", "disabled"]).optional(),
 	email: z.string().email().optional(),
 });
@@ -58,7 +62,9 @@ function safeRevalidatePath(path: string) {
 // Actions
 // =============================================================================
 
-export async function createUser(data: z.infer<typeof createUserSchema> & { performerId?: string }) {
+export async function createUser(
+	data: z.infer<typeof createUserSchema> & { performerId?: string },
+) {
 	const parsed = createUserSchema.safeParse(data);
 	if (!parsed.success) {
 		return { success: false, error: parsed.error.format() };
@@ -105,14 +111,15 @@ export async function createUser(data: z.infer<typeof createUserSchema> & { perf
 
 		const { passwordHash: _, ...safeUser } = newUser;
 		return { success: true, data: safeUser };
-
 	} catch (error) {
 		console.error("Failed to create user:", error);
 		return { success: false, error: "Failed to create user" };
 	}
 }
 
-export async function updateUser(data: z.infer<typeof updateUserSchema> & { performerId?: string }) {
+export async function updateUser(
+	data: z.infer<typeof updateUserSchema> & { performerId?: string },
+) {
 	const parsed = updateUserSchema.safeParse(data);
 	if (!parsed.success) {
 		return { success: false, error: parsed.error.format() };
@@ -131,7 +138,7 @@ export async function updateUser(data: z.infer<typeof updateUserSchema> & { perf
 		}
 
 		const context = await getContext(performerId);
-		
+
 		const updatedUser = await db.transaction(async (tx) => {
 			const [updated] = await tx
 				.update(users)
@@ -160,7 +167,6 @@ export async function updateUser(data: z.infer<typeof updateUserSchema> & { perf
 
 		const { passwordHash: _, ...safeUser } = updatedUser;
 		return { success: true, data: safeUser };
-
 	} catch (error) {
 		console.error("Failed to update user:", error);
 		return { success: false, error: "Failed to update user" };

@@ -1,10 +1,9 @@
-
 "use client";
 
+import { Loader2, Plus, X } from "lucide-react";
 import { useActionState, useState } from "react";
 import { createUser } from "@/actions/users";
 import { Button } from "@/components/ui/button";
-import { Loader2, Plus, X } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-auth";
 
 // Simple modal since we don't have Radix Dialog yet
@@ -12,7 +11,11 @@ function Modal({
 	isOpen,
 	onClose,
 	children,
-}: { isOpen: boolean; onClose: () => void; children: React.ReactNode }) {
+}: {
+	isOpen: boolean;
+	onClose: () => void;
+	children: React.ReactNode;
+}) {
 	if (!isOpen) return null;
 	return (
 		<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
@@ -25,9 +28,7 @@ function Modal({
 						<X className="w-5 h-5" />
 					</button>
 				</div>
-                <div className="px-6 pb-6">
-				    {children}
-                </div>
+				<div className="px-6 pb-6">{children}</div>
 			</div>
 		</div>
 	);
@@ -36,28 +37,32 @@ function Modal({
 const initialState = {
 	success: false,
 	error: "",
-    data: null as any
+	data: null as any,
 };
 
 export function CreateUserButton() {
-    const { user } = useCurrentUser();
+	const { user } = useCurrentUser();
 	const [isOpen, setIsOpen] = useState(false);
 	const [state, formAction, isPending] = useActionState(
 		async (prevState: any, formData: FormData) => {
-            const rawData = Object.fromEntries(formData);
-            const result = await createUser({
-                email: rawData.email as string,
-                password: rawData.password as string,
-                appRole: rawData.appRole as any,
-                performerId: user?.id,
-            });
-            
-            if (result.success) {
-                setIsOpen(false);
-                return { success: true, error: "", data: result.data };
-            }
-            return { success: false, error: JSON.stringify(result.error), data: null };
-        },
+			const rawData = Object.fromEntries(formData);
+			const result = await createUser({
+				email: rawData.email as string,
+				password: rawData.password as string,
+				appRole: rawData.appRole as any,
+				performerId: user?.id,
+			});
+
+			if (result.success) {
+				setIsOpen(false);
+				return { success: true, error: "", data: result.data };
+			}
+			return {
+				success: false,
+				error: JSON.stringify(result.error),
+				data: null,
+			};
+		},
 		initialState,
 	);
 
@@ -73,36 +78,42 @@ export function CreateUserButton() {
 					<div className="space-y-2 text-center">
 						<h3 className="text-lg font-semibold">Create New User</h3>
 						<p className="text-sm text-muted-foreground">
-							Add a new user to the system. They will receive an email to set up their
-							account.
+							Add a new user to the system. They will receive an email to set up
+							their account.
 						</p>
 					</div>
 					<form action={formAction} className="flex flex-col gap-4">
 						<div className="grid gap-2">
-							<label htmlFor="email" className="text-sm font-medium">Email</label>
+							<label htmlFor="email" className="text-sm font-medium">
+								Email
+							</label>
 							<input
 								id="email"
 								name="email"
 								type="email"
 								required
 								className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                placeholder="alice@example.com"
+								placeholder="alice@example.com"
 							/>
 						</div>
-                        <div className="grid gap-2">
-							<label htmlFor="password" className="text-sm font-medium">Temporary Password</label>
+						<div className="grid gap-2">
+							<label htmlFor="password" className="text-sm font-medium">
+								Temporary Password
+							</label>
 							<input
 								id="password"
 								name="password"
 								type="password"
 								required
-                                minLength={8}
+								minLength={8}
 								className="flex h-9 w-full rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-                                placeholder="********"
+								placeholder="********"
 							/>
 						</div>
 						<div className="grid gap-2">
-							<label htmlFor="appRole" className="text-sm font-medium">Role</label>
+							<label htmlFor="appRole" className="text-sm font-medium">
+								Role
+							</label>
 							<select
 								id="appRole"
 								name="appRole"
@@ -115,9 +126,9 @@ export function CreateUserButton() {
 								<option value="admin">Admin</option>
 							</select>
 						</div>
-                        {state.error && (
-                            <p className="text-sm text-destructive">{state.error}</p>
-                        )}
+						{state.error && (
+							<p className="text-sm text-destructive">{state.error}</p>
+						)}
 						<Button type="submit" disabled={isPending}>
 							{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 							Create User

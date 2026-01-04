@@ -1,4 +1,3 @@
-
 export type Role = "admin" | "skill_manager" | "trainer" | "auditor" | "viewer";
 
 export type Permission =
@@ -65,7 +64,10 @@ export function can(session: Session | null, permission: Permission): boolean {
 	return hasPermission(session?.user?.role as Role, permission);
 }
 
-export function checkPermission(session: Session | null, permission: Permission): void {
+export function checkPermission(
+	session: Session | null,
+	permission: Permission,
+): void {
 	if (!can(session, permission)) {
 		throw new Error(`Permission denied: ${permission}`);
 	}

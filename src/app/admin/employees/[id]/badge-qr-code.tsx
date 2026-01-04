@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { Check, Copy, Download, Printer, QrCode } from "lucide-react";
 import QRCode from "qrcode";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Download, QrCode, Printer, Copy, Check } from "lucide-react";
 
 interface BadgeQRCodeProps {
 	badgeToken: string;

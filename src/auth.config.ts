@@ -1,4 +1,3 @@
-
 import type { NextAuthConfig } from "next-auth";
 
 export const authConfig = {
@@ -27,7 +26,7 @@ export const authConfig = {
 				session.user.id = token.sub;
 			}
 			if (token.role && session.user) {
-				// @ts-ignore - will fix types later
+				// @ts-expect-error - will fix types later
 				session.user.role = token.role;
 			}
 			return session;
@@ -35,7 +34,7 @@ export const authConfig = {
 		async jwt({ token, user }) {
 			if (user) {
 				token.sub = user.id;
-				// @ts-ignore
+				// @ts-expect-error
 				token.role = user.appRole;
 			}
 			return token;

@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
 import { Html5QrcodeScanner, Html5QrcodeSupportedFormats } from "html5-qrcode";
+import { AlertCircle, Camera } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Card } from "@/components/ui/card";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Camera, AlertCircle } from "lucide-react";
+import { Card } from "@/components/ui/card";
 
 export function BadgeScanner() {
 	const router = useRouter();
@@ -28,7 +28,7 @@ export function BadgeScanner() {
 			(decodedText) => {
 				// Success
 				console.log("Decoded text:", decodedText);
-				
+
 				// Check if the URL matches our badge pattern
 				// e.g. https://domain.com/b/token or just /b/token
 				try {
@@ -70,12 +70,14 @@ export function BadgeScanner() {
 		<div className="space-y-4">
 			<Card className="overflow-hidden bg-black border-white/10 shadow-2xl relative group">
 				<div id="reader" className="w-full aspect-square" />
-				
+
 				{!error && (
 					<div className="absolute inset-x-0 top-4 flex justify-center pointer-events-none transition-opacity group-hover:opacity-100 opacity-70">
 						<div className="bg-black/60 backdrop-blur-md px-4 py-2 rounded-full border border-white/20 flex items-center gap-2">
 							<Camera className="h-4 w-4 text-indigo-400" />
-							<span className="text-xs font-medium text-white uppercase tracking-wider">Scanning for Badge...</span>
+							<span className="text-xs font-medium text-white uppercase tracking-wider">
+								Scanning for Badge...
+							</span>
 						</div>
 					</div>
 				)}
@@ -87,8 +89,8 @@ export function BadgeScanner() {
 								<AlertCircle className="h-12 w-12 text-red-500" />
 							</div>
 							<p className="text-sm text-slate-300">{error}</p>
-							<Button 
-								variant="outline" 
+							<Button
+								variant="outline"
 								onClick={() => setError(null)}
 								className="border-white/20 text-white hover:bg-white/10"
 							>
@@ -100,7 +102,9 @@ export function BadgeScanner() {
 			</Card>
 
 			<div className="text-center space-y-2">
-				<p className="text-sm text-slate-400">Position the employee badge center-frame</p>
+				<p className="text-sm text-slate-400">
+					Position the employee badge center-frame
+				</p>
 			</div>
 		</div>
 	);

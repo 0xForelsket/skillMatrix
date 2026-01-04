@@ -1,9 +1,8 @@
-
 "use client";
 
+import { Loader2 } from "lucide-react";
 import { useActionState } from "react";
 import { authenticate } from "@/actions/auth";
-import { Loader2 } from "lucide-react";
 
 export function LoginForm({ errorId }: { errorId?: string }) {
 	const [errorMessage, formAction, isPending] = useActionState(
@@ -11,14 +10,14 @@ export function LoginForm({ errorId }: { errorId?: string }) {
 		undefined,
 	);
 
-    const urlError = errorId === "disabled" 
-        ? "Your account has been disabled." 
-        : errorId 
-            ? "Authentication failed. Please try again." 
-            : null;
+	const urlError =
+		errorId === "disabled"
+			? "Your account has been disabled."
+			: errorId
+				? "Authentication failed. Please try again."
+				: null;
 
-    const displayError = errorMessage || urlError;
-
+	const displayError = errorMessage || urlError;
 
 	return (
 		<div className="flex flex-col gap-6">
@@ -32,7 +31,10 @@ export function LoginForm({ errorId }: { errorId?: string }) {
 				<form action={formAction}>
 					<div className="grid gap-4">
 						<div className="grid gap-2">
-							<label htmlFor="email" className="text-sm font-medium leading-none">
+							<label
+								htmlFor="email"
+								className="text-sm font-medium leading-none"
+							>
 								Email
 							</label>
 							<input

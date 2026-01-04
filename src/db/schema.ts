@@ -18,10 +18,10 @@ import {
 	integer,
 	json,
 	pgTable,
+	primaryKey,
 	text,
 	timestamp,
 	uniqueIndex,
-    primaryKey,
 } from "drizzle-orm/pg-core";
 
 import { generateId } from "@/lib/id";
@@ -343,7 +343,7 @@ export const projectsRelations = relations(projects, ({ one, many }) => ({
 		fields: [projects.departmentId],
 		references: [departments.id],
 	}),
-    employees: many(employeeProjects),
+	employees: many(employeeProjects),
 }));
 
 export const usersRelations = relations(users, ({ one }) => ({
@@ -362,19 +362,22 @@ export const employeesRelations = relations(employees, ({ one, many }) => ({
 	}),
 	role: one(roles, { fields: [employees.roleId], references: [roles.id] }),
 	skills: many(employeeSkills),
-    projects: many(employeeProjects),
+	projects: many(employeeProjects),
 }));
 
-export const employeeProjectsRelations = relations(employeeProjects, ({ one }) => ({
-    employee: one(employees, {
-        fields: [employeeProjects.employeeId],
-        references: [employees.id],
-    }),
-    project: one(projects, {
-        fields: [employeeProjects.projectId],
-        references: [projects.id],
-    }),
-}));
+export const employeeProjectsRelations = relations(
+	employeeProjects,
+	({ one }) => ({
+		employee: one(employees, {
+			fields: [employeeProjects.employeeId],
+			references: [employees.id],
+		}),
+		project: one(projects, {
+			fields: [employeeProjects.projectId],
+			references: [projects.id],
+		}),
+	}),
+);
 
 export const skillsRelations = relations(skills, ({ many }) => ({
 	revisions: many(skillRevisions),

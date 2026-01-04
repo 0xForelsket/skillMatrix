@@ -1,23 +1,23 @@
 "use client";
 
+import {
+	Award,
+	Calendar,
+	Check,
+	Loader2,
+	LucideAward,
+	MessageSquare,
+	Plus,
+	Star,
+	X,
+} from "lucide-react";
 import { useState, useTransition } from "react";
-import { Button } from "@/components/ui/button";
+import { toast } from "sonner"; // Assuming sonner is available or similar toast
 import {
 	certifySkill,
 	getSkillsForCertification,
 } from "@/actions/certifications";
-import {
-	LucideAward,
-	Check,
-	Loader2,
-	Plus,
-	X,
-	Award,
-	Star,
-	Calendar,
-	MessageSquare,
-} from "lucide-react";
-import { toast } from "sonner"; // Assuming sonner is available or similar toast
+import { Button } from "@/components/ui/button";
 
 interface QuickCertifyFlowProps {
 	employeeId: string;
@@ -47,7 +47,9 @@ export function QuickCertifyFlow({
 		setIsLoadingSkills(true);
 		const result = await getSkillsForCertification();
 		if (result.success && result.data) {
-			setSkills(result.data.map((s) => ({ id: s.id, name: s.name, code: s.code })));
+			setSkills(
+				result.data.map((s) => ({ id: s.id, name: s.name, code: s.code })),
+			);
 		}
 		setIsLoadingSkills(false);
 	};
@@ -101,7 +103,9 @@ export function QuickCertifyFlow({
 							<Award className="h-6 w-6 text-indigo-400" />
 						</div>
 						<div>
-							<h3 className="text-lg font-bold text-white leading-none">Quick Certify</h3>
+							<h3 className="text-lg font-bold text-white leading-none">
+								Quick Certify
+							</h3>
 							<p className="text-sm text-slate-400 mt-1">{employeeName}</p>
 						</div>
 					</div>
@@ -119,7 +123,10 @@ export function QuickCertifyFlow({
 				<div className="p-6 space-y-6">
 					{/* Skill Selection */}
 					<div className="space-y-2">
-						<label htmlFor="skill-select" className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+						<label
+							htmlFor="skill-select"
+							className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"
+						>
 							<Award className="h-3 w-3" />
 							Select Skill
 						</label>
@@ -131,7 +138,9 @@ export function QuickCertifyFlow({
 								disabled={isLoadingSkills || isPending}
 								className="w-full bg-slate-950 border border-white/10 rounded-xl px-4 py-3 text-white appearance-none focus:outline-none focus:ring-2 focus:ring-indigo-500/50 transition-all disabled:opacity-50"
 							>
-								<option value="">{isLoadingSkills ? "Loading skills..." : "Choose a skill..."}</option>
+								<option value="">
+									{isLoadingSkills ? "Loading skills..." : "Choose a skill..."}
+								</option>
 								{skills.map((s) => (
 									<option key={s.id} value={s.id}>
 										{s.name} {s.code ? `(${s.code})` : ""}
@@ -180,7 +189,10 @@ export function QuickCertifyFlow({
 
 					{/* Notes */}
 					<div className="space-y-2">
-						<label htmlFor="trainer-notes" className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2">
+						<label
+							htmlFor="trainer-notes"
+							className="text-xs font-bold text-slate-500 uppercase tracking-widest flex items-center gap-2"
+						>
 							<MessageSquare className="h-3 w-3" />
 							Trainer Notes
 						</label>

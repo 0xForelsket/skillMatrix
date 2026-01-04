@@ -5,12 +5,20 @@
  * No authentication required - accessible by anyone with the URL.
  */
 
+import { format } from "date-fns";
+import { eq } from "drizzle-orm";
+import {
+	AlertTriangle,
+	Award,
+	BadgeCheck,
+	Building2,
+	Clock,
+	MapPin,
+	XCircle,
+} from "lucide-react";
+import { notFound } from "next/navigation";
 import { db } from "@/db";
 import { employees } from "@/db/schema";
-import { eq } from "drizzle-orm";
-import { notFound } from "next/navigation";
-import { BadgeCheck, AlertTriangle, XCircle, Clock, Award, Building2, MapPin } from "lucide-react";
-import { format } from "date-fns";
 import { isCertificationActive, isExpiringSoon } from "@/lib/skills";
 
 interface BadgePageProps {
@@ -82,7 +90,6 @@ function StatusBadge({ status }: { status: SkillStatus }) {
 		</span>
 	);
 }
-
 
 import { auth } from "@/auth";
 import { can } from "@/lib/permissions";
@@ -273,7 +280,10 @@ export default async function BadgeViewerPage({ params }: BadgePageProps) {
 													<span>•</span>
 													<span>
 														Certified{" "}
-														{format(new Date(empSkill.achievedAt), "MMM d, yyyy")}
+														{format(
+															new Date(empSkill.achievedAt),
+															"MMM d, yyyy",
+														)}
 													</span>
 													{empSkill.expiresAt && (
 														<>
@@ -299,9 +309,7 @@ export default async function BadgeViewerPage({ params }: BadgePageProps) {
 
 				{/* Footer */}
 				<div className="mt-6 text-center text-xs text-slate-500 pb-20">
-					<p>
-						Verified on {format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
-					</p>
+					<p>Verified on {format(new Date(), "MMMM d, yyyy 'at' h:mm a")}</p>
 					<p className="mt-1">
 						This is a real-time verification of employee skills and
 						certifications.
@@ -311,9 +319,9 @@ export default async function BadgeViewerPage({ params }: BadgePageProps) {
 
 			{/* Trainer Actions */}
 			{showTrainerActions && (
-				<QuickCertifyFlow 
-					employeeId={employee.id} 
-					employeeName={employee.name} 
+				<QuickCertifyFlow
+					employeeId={employee.id}
+					employeeName={employee.name}
 				/>
 			)}
 		</div>

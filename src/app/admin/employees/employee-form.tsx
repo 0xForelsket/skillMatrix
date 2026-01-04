@@ -1,7 +1,5 @@
 "use client";
 
-import { recordAttachment } from "@/actions/storage";
-import { FileUpload } from "@/components/ui/file-upload";
 import {
 	Activity,
 	Briefcase,
@@ -22,6 +20,7 @@ import {
 	type EmployeeFormData,
 	updateEmployee,
 } from "@/actions/employees";
+import { recordAttachment } from "@/actions/storage";
 import { Button } from "@/components/ui/button";
 import {
 	Card,
@@ -30,6 +29,7 @@ import {
 	CardHeader,
 	CardTitle,
 } from "@/components/ui/card";
+import { FileUpload } from "@/components/ui/file-upload";
 
 interface EmployeeFormProps {
 	initialData?: EmployeeFormData & { id: string };
@@ -292,7 +292,9 @@ export function EmployeeForm({
 										</p>
 										<button
 											type="button"
-											onClick={() => setFormData((p) => ({ ...p, photoUrl: "" }))}
+											onClick={() =>
+												setFormData((p) => ({ ...p, photoUrl: "" }))
+											}
 											className="text-xs text-red-400 hover:text-red-300 transition-colors"
 										>
 											Remove Photo

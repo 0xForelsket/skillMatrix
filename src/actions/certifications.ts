@@ -1,15 +1,15 @@
 "use server";
 
-import { headers } from "next/headers";
-import { db } from "@/db";
-import { employeeSkills, skills, skillRevisions } from "@/db/schema";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { logAudit, type AuditContext } from "@/lib/audit";
-import { eq, desc, and, asc } from "drizzle-orm";
 import { addMonths } from "date-fns";
-import { checkPermission } from "@/lib/permissions";
+import { and, asc, desc, eq } from "drizzle-orm";
+import { revalidatePath } from "next/cache";
+import { headers } from "next/headers";
+import { z } from "zod";
 import { auth } from "@/auth";
+import { db } from "@/db";
+import { employeeSkills, skillRevisions, skills } from "@/db/schema";
+import { type AuditContext, logAudit } from "@/lib/audit";
+import { checkPermission } from "@/lib/permissions";
 
 async function getContext(performerId?: string): Promise<AuditContext> {
 	try {
@@ -25,71 +25,71 @@ async function getContext(performerId?: string): Promise<AuditContext> {
 }
 
 const revokeSchema = z.object({
-    employeeSkillId: z.string().min(1),
-    reason: z.string().min(5, "Reason is required (min 5 characters)"),
+	employeeSkillId: z.string().min(1),
+	reason: z.string().min(5, "Reason is required (min 5 characters)"),
 });
 
 export async function revokeCertification(data: z.infer<typeof revokeSchema>) {
-    const session = await auth();
-    try {
-        checkPermission(session, "certifications:revoke");
-    } catch (e) {
-        return { success: false, error: "Permission denied" };
-    }
+	const session = await auth();
+	try {
+		checkPermission(session, "certifications:revoke");
+	} catch (e) {
+		return { success: false, error: "Permission denied" };
+	}
 
-    const parsed = revokeSchema.safeParse(data);
-    if (!parsed.success) {
-        return { success: false, error: parsed.error.format() };
-    }
+	const parsed = revokeSchema.safeParse(data);
+	if (!parsed.success) {
+		return { success: false, error: parsed.error.format() };
+	}
 
-    const { employeeSkillId, reason } = parsed.data;
-    const context = await getContext(session?.user?.id);
+	const { employeeSkillId, reason } = parsed.data;
+	const context = await getContext(session?.user?.id);
 
-    try {
-        // Find existing to verify and for audit
-        const existing = await db.query.employeeSkills.findFirst({
-            where: eq(employeeSkills.id, employeeSkillId),
-            with: {
-                skill: true,
-                employee: true
-            }
-        });
+	try {
+		// Find existing to verify and for audit
+		const existing = await db.query.employeeSkills.findFirst({
+			where: eq(employeeSkills.id, employeeSkillId),
+			with: {
+				skill: true,
+				employee: true,
+			},
+		});
 
-        if (!existing) {
-            return { success: false, error: "Certification not found" };
-        }
+		if (!existing) {
+			return { success: false, error: "Certification not found" };
+		}
 
-        if (existing.revokedAt) {
-            return { success: false, error: "Certification is already revoked" };
-        }
+		if (existing.revokedAt) {
+			return { success: false, error: "Certification is already revoked" };
+		}
 
-        const [updated] = await db.update(employeeSkills)
-            .set({
-                revokedAt: new Date(),
-                revokedByUserId: session?.user?.id,
-                revocationReason: reason,
-            })
-            .where(eq(employeeSkills.id, employeeSkillId))
-            .returning();
+		const [updated] = await db
+			.update(employeeSkills)
+			.set({
+				revokedAt: new Date(),
+				revokedByUserId: session?.user?.id,
+				revocationReason: reason,
+			})
+			.where(eq(employeeSkills.id, employeeSkillId))
+			.returning();
 
-        await logAudit({
-            action: "revoke",
-            entityType: "employee_skill", // Correct entity type for audit
-            entityId: employeeSkillId,
-            oldValue: existing,
-            newValue: updated,
-            context,
-        });
+		await logAudit({
+			action: "revoke",
+			entityType: "employee_skill", // Correct entity type for audit
+			entityId: employeeSkillId,
+			oldValue: existing,
+			newValue: updated,
+			context,
+		});
 
-        revalidatePath(`/admin/employees/${existing.employeeId}`);
-        revalidatePath("/admin/matrix");
-        
-        return { success: true };
+		revalidatePath(`/admin/employees/${existing.employeeId}`);
+		revalidatePath("/admin/matrix");
 
-    } catch (error) {
-        console.error("Revocation failed:", error);
-        return { success: false, error: "System error during revocation" };
-    }
+		return { success: true };
+	} catch (error) {
+		console.error("Revocation failed:", error);
+		return { success: false, error: "System error during revocation" };
+	}
 }
 const certifySkillSchema = z.object({
 	employeeId: z.string(),
@@ -124,13 +124,16 @@ export async function certifySkill(data: z.infer<typeof certifySkillSchema>) {
 		const revision = await db.query.skillRevisions.findFirst({
 			where: and(
 				eq(skillRevisions.skillId, skillId),
-				eq(skillRevisions.status, "active")
+				eq(skillRevisions.status, "active"),
 			),
 			orderBy: [desc(skillRevisions.createdAt)],
 		});
 
 		if (!revision) {
-			return { success: false, error: "No active revision found for this skill" };
+			return {
+				success: false,
+				error: "No active revision found for this skill",
+			};
 		}
 
 		// 2. Calculate expiration date

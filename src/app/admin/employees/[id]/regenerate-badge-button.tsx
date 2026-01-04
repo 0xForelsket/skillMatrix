@@ -1,9 +1,9 @@
 "use client";
 
+import { AlertTriangle, Check, Copy, QrCode, RefreshCw } from "lucide-react";
 import { useState, useTransition } from "react";
 import { regenerateBadgeToken } from "@/actions/employees";
 import { Button } from "@/components/ui/button";
-import { RefreshCw, AlertTriangle, Check, Copy, QrCode } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-auth";
 
 interface RegenerateBadgeButtonProps {

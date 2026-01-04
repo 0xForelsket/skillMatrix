@@ -1,18 +1,13 @@
-
+import { eq } from "drizzle-orm";
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
-import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import { users } from "@/db/schema";
+import { logAuthLogin, logAuthLoginFailed, logAuthLogout } from "@/lib/audit";
+import { checkAuthGuard } from "@/lib/auth-guard";
 import { verifyPassword } from "@/lib/password";
 import { authConfig } from "./auth.config";
-import { checkAuthGuard } from "@/lib/auth-guard";
-import {
-	logAuthLogin,
-	logAuthLoginFailed,
-	logAuthLogout,
-} from "@/lib/audit";
 
 // Re-check user status every 5 minutes
 const STATUS_CHECK_INTERVAL_MS = 5 * 60 * 1000;
@@ -22,7 +17,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 	callbacks: {
 		...authConfig.callbacks,
 		async jwt({ token, user, trigger }) {
-				// Initial sign-in: populate token with user data
+			// Initial sign-in: populate token with user data
 			if (user) {
 				token.sub = user.id;
 				token.role = (user as { appRole?: string }).appRole;
@@ -76,7 +71,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 			return session;
 		},
 		authorized({ auth, request: { nextUrl } }) {
-            return checkAuthGuard(auth, nextUrl);
+			return checkAuthGuard(auth, nextUrl);
 		},
 	},
 	events: {
@@ -94,7 +89,8 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 		},
 		async signOut(message) {
 			// Log logout - handle both JWT and session-based auth
-			const userId = "token" in message ? message.token?.sub : message.session?.userId;
+			const userId =
+				"token" in message ? message.token?.sub : message.session?.userId;
 			if (userId) {
 				await logAuthLogout({
 					userId,
@@ -111,7 +107,10 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 
 				if (!parsedCredentials.success) {
 					// Log validation failure
-					const email = typeof credentials?.email === "string" ? credentials.email : "unknown";
+					const email =
+						typeof credentials?.email === "string"
+							? credentials.email
+							: "unknown";
 					await logAuthLoginFailed({
 						email,
 						reason: "validation_error",

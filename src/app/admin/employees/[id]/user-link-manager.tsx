@@ -1,13 +1,20 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
 import {
+	AlertTriangle,
+	Check,
+	Link2,
+	Loader2,
+	Unlink,
+	User,
+} from "lucide-react";
+import { useEffect, useState, useTransition } from "react";
+import {
+	getAvailableUsersForLinking,
 	linkUserToEmployee,
 	unlinkUserFromEmployee,
-	getAvailableUsersForLinking,
 } from "@/actions/employees";
 import { Button } from "@/components/ui/button";
-import { Link2, Unlink, User, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { useCurrentUser } from "@/hooks/use-auth";
 
 interface UserLinkManagerProps {
@@ -207,18 +214,23 @@ export function UserLinkManager({
 									{/* Link User Form */}
 									<h3 className="text-lg font-semibold">Link User Account</h3>
 									<p className="mt-1 text-sm text-muted-foreground">
-										Link a user account to <strong>{employeeName}</strong>.
-										This allows the user to see their own skills.
+										Link a user account to <strong>{employeeName}</strong>. This
+										allows the user to see their own skills.
 									</p>
 
 									<div className="mt-4">
-									<label htmlFor="user-select" className="text-sm font-medium">Select User</label>
-									<select
-										id="user-select"
-										value={selectedUserId}
-										onChange={(e) => setSelectedUserId(e.target.value)}
-										className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
-									>
+										<label
+											htmlFor="user-select"
+											className="text-sm font-medium"
+										>
+											Select User
+										</label>
+										<select
+											id="user-select"
+											value={selectedUserId}
+											onChange={(e) => setSelectedUserId(e.target.value)}
+											className="mt-1 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+										>
 											<option value="">Choose a user...</option>
 											{availableUsers
 												.filter((u) => !u.isLinked && u.status === "active")

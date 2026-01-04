@@ -221,7 +221,11 @@ export async function logAuthLoginFailed({
 	context = {},
 }: {
 	email: string;
-	reason: "invalid_credentials" | "account_disabled" | "account_not_found" | "validation_error";
+	reason:
+		| "invalid_credentials"
+		| "account_disabled"
+		| "account_not_found"
+		| "validation_error";
 	context?: AuditContext;
 }): Promise<void> {
 	await logAudit({
