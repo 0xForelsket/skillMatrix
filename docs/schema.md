@@ -8,21 +8,22 @@ This schema is designed for Drizzle ORM with PostgreSQL. It enforces **Site Scop
 2. **Soft Deletes:** `deletedAt` column for compliance/audit trails
 3. **Users ≠ Employees:** Authentication is separate from business entities
 4. **Version-Controlled Skills:** Skills have revisions; employees are certified on specific revisions
+5. **Audit Everything:** All changes logged for compliance
 
 ---
 
 ## Complete Schema (`src/db/schema.ts`)
 
 ```typescript
-import { pgTable, text, timestamp, integer, boolean, uniqueIndex, primaryKey } from 'drizzle-orm/pg-core';
-import { relations, sql } from 'drizzle-orm';
+import { pgTable, text, timestamp, integer, boolean, uniqueIndex, index, json } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 // --- 1. UTILITIES ---
 // We use 'text' for IDs to support application-side UUIDv7 generation easily.
 const commonCols = {
   id: text('id').primaryKey(), 
   createdAt: timestamp('created_at').defaultNow().notNull(),
-  updatedAt: timestamp('updated_at').defaultNow().notNull(), // Handle updates via triggers or app logic
+  updatedAt: timestamp('updated_at').defaultNow().notNull(), // Updated via Postgres trigger
   deletedAt: timestamp('deleted_at'), // Soft delete for compliance/audit
 };
 
@@ -77,9 +78,15 @@ export const employees = pgTable('employees', {
   employeeNumber: text('employee_number').notNull().unique(), // HR identifier (e.g., "EMP-0042")
   badgeToken: text('badge_token').notNull().unique(), // Random token for QR code URL (can be regenerated if badge lost)
   name: text('name').notNull(),
+  photoUrl: text('photo_url'), // Optional employee photo for badge/QR page
   email: text('email'), // HR/contact email, not for login (nullable)
   status: text('status', { enum: ['active', 'terminated', 'leave'] }).default('active'),
-});
+}, (t) => ({
+  // Performance indexes for common queries
+  siteIdx: index('emp_site_idx').on(t.siteId),
+  deptIdx: index('emp_dept_idx').on(t.departmentId),
+  statusIdx: index('emp_status_idx').on(t.status),
+}));
 
 // --- 3. SKILL CATALOG (Version Controlled) ---
 
@@ -88,6 +95,7 @@ export const skills = pgTable('skills', {
   name: text('name').notNull(),
   description: text('description'),
   validityMonths: integer('validity_months'), // Null = Never expires
+  maxLevel: integer('max_level').default(1), // How many levels (1-3 typically)
   code: text('code'), // e.g., "SOP-104"
 });
 
@@ -99,7 +107,9 @@ export const skillRevisions = pgTable('skill_revisions', {
   status: text('status', { enum: ['draft', 'active', 'archived'] }).default('draft'),
   effectiveDate: timestamp('effective_date'),
   requiresRetraining: boolean('requires_retraining').default(true),
-});
+}, (t) => ({
+  skillStatusIdx: index('rev_skill_status_idx').on(t.skillId, t.status),
+}));
 
 // --- 4. THE RULES ENGINE (Requirement Matrix) ---
 
@@ -128,12 +138,22 @@ export const employeeSkills = pgTable('employee_skills', {
   skillId: text('skill_id').references(() => skills.id).notNull(),
   skillRevisionId: text('skill_revision_id').references(() => skillRevisions.id).notNull(),
   
+  achievedLevel: integer('achieved_level').default(1).notNull(), // What level they achieved
   achievedAt: timestamp('achieved_at').notNull(),
   expiresAt: timestamp('expires_at'), // Calculated upon insertion
-  certifiedByUserId: text('certified_by_user_id'), // Who signed this off?
-});
+  certifiedByUserId: text('certified_by_user_id').references(() => users.id), // Who signed this off
+  notes: text('notes'), // Trainer comments
+  
+  // Revocation tracking
+  revokedAt: timestamp('revoked_at'),
+  revokedByUserId: text('revoked_by_user_id').references(() => users.id),
+  revocationReason: text('revocation_reason'),
+}, (t) => ({
+  empSkillIdx: index('empskill_emp_skill_idx').on(t.employeeId, t.skillId),
+  expiresIdx: index('empskill_expires_idx').on(t.expiresAt),
+}));
 
-// --- 6. FILE ATTACHMENTS (S3/MinIO) ---
+// --- 6. FILE ATTACHMENTS (S3/RustFS) ---
 
 export const attachments = pgTable('attachments', {
   ...commonCols,
@@ -142,6 +162,7 @@ export const attachments = pgTable('attachments', {
   filename: text('filename').notNull(),
   mimeType: text('mime_type'),
   sizeBytes: integer('size_bytes'),
+  uploadedByUserId: text('uploaded_by_user_id').references(() => users.id),
 });
 
 // Link SOPs to Revisions ("Read this PDF")
@@ -159,7 +180,26 @@ export const employeeSkillEvidence = pgTable('employee_skill_evidence', {
   attachmentId: text('attachment_id').references(() => attachments.id).notNull(),
 });
 
-// --- 7. RELATIONS ---
+// --- 7. AUDIT LOG (Compliance) ---
+
+export const auditLogs = pgTable('audit_logs', {
+  id: text('id').primaryKey(),
+  timestamp: timestamp('timestamp').defaultNow().notNull(),
+  userId: text('user_id').references(() => users.id), // Who did it (null for system actions)
+  action: text('action').notNull(), // 'create', 'update', 'delete', 'revoke', 'certify'
+  entityType: text('entity_type').notNull(), // 'employee', 'skill', 'employee_skill', etc.
+  entityId: text('entity_id').notNull(),
+  oldValue: json('old_value'), // Previous state (for updates)
+  newValue: json('new_value'), // New state
+  ipAddress: text('ip_address'),
+  userAgent: text('user_agent'),
+}, (t) => ({
+  entityIdx: index('audit_entity_idx').on(t.entityType, t.entityId),
+  timestampIdx: index('audit_timestamp_idx').on(t.timestamp),
+  userIdx: index('audit_user_idx').on(t.userId),
+}));
+
+// --- 8. RELATIONS ---
 
 export const usersRelations = relations(users, ({ one }) => ({
   employee: one(employees, { fields: [users.id], references: [employees.userId] }), // Reverse lookup
@@ -182,6 +222,151 @@ export const skillRevisionsRelations = relations(skillRevisions, ({ one, many })
   skill: one(skills, { fields: [skillRevisions.skillId], references: [skills.id] }),
   documents: many(skillRevisionDocuments),
 }));
+
+export const employeeSkillsRelations = relations(employeeSkills, ({ one, many }) => ({
+  employee: one(employees, { fields: [employeeSkills.employeeId], references: [employees.id] }),
+  skill: one(skills, { fields: [employeeSkills.skillId], references: [skills.id] }),
+  revision: one(skillRevisions, { fields: [employeeSkills.skillRevisionId], references: [skillRevisions.id] }),
+  certifiedBy: one(users, { fields: [employeeSkills.certifiedByUserId], references: [users.id] }),
+  evidence: many(employeeSkillEvidence),
+}));
+```
+
+---
+
+## Database Triggers & Functions
+
+### Auto-Update `updated_at` Trigger
+
+Create this migration to auto-update timestamps:
+
+```sql
+-- Function to update updated_at column
+CREATE OR REPLACE FUNCTION trigger_set_updated_at()
+RETURNS TRIGGER AS $$
+BEGIN
+  NEW.updated_at = NOW();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Apply to all tables with updated_at column
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOR t IN 
+    SELECT table_name FROM information_schema.columns 
+    WHERE column_name = 'updated_at' AND table_schema = 'public'
+  LOOP
+    EXECUTE format('
+      DROP TRIGGER IF EXISTS set_updated_at ON %I;
+      CREATE TRIGGER set_updated_at
+        BEFORE UPDATE ON %I
+        FOR EACH ROW
+        EXECUTE FUNCTION trigger_set_updated_at();
+    ', t, t);
+  END LOOP;
+END;
+$$;
+```
+
+### Soft Delete Query Helper
+
+Create a reusable filter in `src/db/helpers.ts`:
+
+```typescript
+import { isNull } from 'drizzle-orm';
+
+// Use like: db.query.employees.findMany({ where: withActive(employees) })
+export function withActive<T extends { deletedAt: unknown }>(table: T) {
+  return isNull(table.deletedAt);
+}
+
+// Or with SQL helper
+export const notDeleted = (table: { deletedAt: unknown }) => isNull(table.deletedAt);
+```
+
+---
+
+## Gap Analysis SQL Query
+
+The core query for identifying skill gaps:
+
+```sql
+-- Get all skill gaps for an employee
+WITH employee_context AS (
+  SELECT 
+    e.id as employee_id,
+    e.site_id,
+    e.department_id,
+    e.role_id
+  FROM employees e
+  WHERE e.id = $1 AND e.deleted_at IS NULL
+),
+required_skills AS (
+  -- Find all requirements that apply to this employee
+  SELECT DISTINCT
+    sr.skill_id,
+    sr.required_level,
+    s.name as skill_name,
+    s.validity_months
+  FROM skill_requirements sr
+  JOIN skills s ON s.id = sr.skill_id AND s.deleted_at IS NULL
+  JOIN employee_context ec ON (
+    -- Global requirement (all nulls)
+    (sr.site_id IS NULL AND sr.department_id IS NULL AND sr.role_id IS NULL AND sr.project_id IS NULL)
+    -- Site-specific
+    OR sr.site_id = ec.site_id
+    -- Department-specific
+    OR sr.department_id = ec.department_id
+    -- Role-specific
+    OR sr.role_id = ec.role_id
+    -- TODO: Add project membership check if using projects
+  )
+  WHERE sr.deleted_at IS NULL
+),
+employee_current_skills AS (
+  -- Get employee's current valid certifications
+  SELECT 
+    es.skill_id,
+    es.achieved_level,
+    es.achieved_at,
+    es.expires_at,
+    es.skill_revision_id,
+    sr.status as revision_status
+  FROM employee_skills es
+  JOIN skill_revisions sr ON sr.id = es.skill_revision_id
+  WHERE es.employee_id = $1
+    AND es.deleted_at IS NULL
+    AND es.revoked_at IS NULL
+    AND (es.expires_at IS NULL OR es.expires_at > NOW())
+)
+SELECT 
+  rs.skill_id,
+  rs.skill_name,
+  rs.required_level,
+  ecs.achieved_level,
+  ecs.expires_at,
+  ecs.revision_status,
+  CASE
+    WHEN ecs.skill_id IS NULL THEN 'MISSING'
+    WHEN ecs.revision_status = 'archived' THEN 'OUTDATED'
+    WHEN ecs.achieved_level < rs.required_level THEN 'INSUFFICIENT_LEVEL'
+    WHEN ecs.expires_at IS NOT NULL AND ecs.expires_at < NOW() + INTERVAL '30 days' THEN 'EXPIRING_SOON'
+    ELSE 'VALID'
+  END as status
+FROM required_skills rs
+LEFT JOIN employee_current_skills ecs ON ecs.skill_id = rs.skill_id
+ORDER BY 
+  CASE
+    WHEN ecs.skill_id IS NULL THEN 1
+    WHEN ecs.revision_status = 'archived' THEN 2
+    WHEN ecs.achieved_level < rs.required_level THEN 3
+    WHEN ecs.expires_at IS NOT NULL AND ecs.expires_at < NOW() + INTERVAL '30 days' THEN 4
+    ELSE 5
+  END,
+  rs.skill_name;
 ```
 
 ---
@@ -202,18 +387,19 @@ export const skillRevisionsRelations = relations(skillRevisions, ({ one, many })
 │                    ┌─────────────┐         ┌─────────┐                      │
 │                    │  Employees  │────────▶│  Users  │  (optional link)     │
 │                    └─────────────┘         └─────────┘                      │
-│                           │                                                  │
-└───────────────────────────┼─────────────────────────────────────────────────┘
-                            │
-┌───────────────────────────┼─────────────────────────────────────────────────┐
-│                           ▼          SKILL CATALOG                           │
+│                           │                      │                           │
+└───────────────────────────┼──────────────────────┼──────────────────────────┘
+                            │                      │
+┌───────────────────────────┼──────────────────────┼──────────────────────────┐
+│                           ▼                      ▼   AUDIT & COMPLIANCE      │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                              │
 │  ┌────────────────┐      ┌─────────────────┐      ┌─────────────────────┐   │
 │  │ Employee Skills│◀────▶│     Skills      │◀────▶│  Skill Requirements │   │
-│  └────────────────┘      └─────────────────┘      └─────────────────────┘   │
-│          │                       │                                           │
-│          │                       ▼                                           │
+│  │ + level        │      │ + maxLevel      │      └─────────────────────┘   │
+│  │ + notes        │      └─────────────────┘                                 │
+│  │ + revokedAt    │              │                                           │
+│  └────────────────┘              ▼                                           │
 │          │               ┌─────────────────┐      ┌─────────────────────┐   │
 │          │               │ Skill Revisions │◀────▶│ Revision Documents  │   │
 │          │               └─────────────────┘      └─────────────────────┘   │
@@ -221,7 +407,13 @@ export const skillRevisionsRelations = relations(skillRevisions, ({ one, many })
 │          ▼                                                   ▼               │
 │  ┌────────────────────┐                          ┌─────────────────────┐    │
 │  │ Skill Evidence     │─────────────────────────▶│    Attachments      │    │
-│  └────────────────────┘                          └─────────────────────┘    │
+│  └────────────────────┘                          │    (S3/RustFS)      │    │
+│                                                  └─────────────────────┘    │
+│                                                                              │
+│  ┌──────────────────────────────────────────────────────────────────────┐   │
+│  │                         AUDIT LOGS                                    │   │
+│  │  All changes tracked: who, what, when, old/new values                │   │
+│  └──────────────────────────────────────────────────────────────────────┘   │
 │                                                                              │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
@@ -261,3 +453,28 @@ Global (all NULL)     → Everyone needs this skill
 ```
 
 Multiple scopes can be combined (e.g., "Technicians at Austin Plant").
+
+### Certification Revocation
+
+Skills can be revoked (not just deleted) with:
+- `revokedAt` - When it was revoked
+- `revokedByUserId` - Who revoked it
+- `revocationReason` - Why (e.g., "Failed practical assessment", "Disciplinary action")
+
+This maintains the audit trail while invalidating the certification.
+
+---
+
+## Recommended Indexes
+
+| Table | Index | Purpose |
+|-------|-------|---------|
+| `employees` | `(site_id)` | Filter by site |
+| `employees` | `(department_id)` | Filter by department |
+| `employees` | `(status)` | Filter active employees |
+| `skill_revisions` | `(skill_id, status)` | Find active revision for skill |
+| `employee_skills` | `(employee_id, skill_id)` | Gap analysis lookup |
+| `employee_skills` | `(expires_at)` | Find expiring certifications |
+| `audit_logs` | `(entity_type, entity_id)` | Query history for an entity |
+| `audit_logs` | `(timestamp)` | Time-range queries |
+| `audit_logs` | `(user_id)` | Query actions by user |
