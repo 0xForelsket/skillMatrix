@@ -31,57 +31,58 @@ export interface MatrixData {
     cells: Record<string, Record<string, MatrixCell>>; // employeeId -> skillId -> Cell
 }
 
-export async function getMatrixData(
-    filters?: { siteId?: string; departmentId?: string }
-): Promise<MatrixData> {
-    // 1. Fetch Employees (with relations needed for scope matching)
-    const empQuery = db.query.employees.findMany({
-        where: filters?.siteId 
-            ? eq(employees.siteId, filters.siteId) 
-            : undefined, // Add department filter if needed
-        with: {
-            site: true,
-            department: true,
-            role: true,
-            projects: {
-                with: {
-                    project: true
-                }
-            }
-        }
-    });
+export interface MatrixEmployee {
+    id: string;
+    name: string;
+    employeeNumber: string;
+    siteId: string;
+    site: { name: string };
+    roleId?: string | null;
+    role?: { name: string } | null;
+    departmentId: string;
+    department: { name: string };
+    projects: { projectId: string; project: { name: string } }[];
+}
 
-    // 2. Fetch All Skills
-    const skillsQuery = db.query.skills.findMany({
-        where: isNull(skills.validityMonths) // Example condition, fetch all for now
-        // Maybe orderBy category or name
-    });
+export interface MatrixSkill {
+    id: string;
+    name: string;
+    code: string | null;
+    maxLevel: number | null;
+}
 
-    // 3. Fetch All Requirements (We'll match them in memory to avoid N+1 or complex SQL for now)
-    // Optimization: could refine this query to only relevant scopes if filters are tight
-    const reqsQuery = db.query.skillRequirements.findMany({
-        with: {
-            site: true,
-            department: true,
-            role: true,
-            project: true
-        }
-    });
+export interface MatrixRequirement {
+    skillId: string;
+    requiredLevel: number | null;
+    siteId?: string | null;
+    site?: { name: string } | null;
+    departmentId?: string | null;
+    department?: { name: string } | null;
+    roleId?: string | null;
+    role?: { name: string } | null;
+    projectId?: string | null;
+    project?: { name: string } | null;
+}
 
-    // 4. Fetch All Employee Skills (Certifications)
-    const certsQuery = db.query.employeeSkills.findMany({
-        where: isNull(employeeSkills.revokedAt) // Only active certs
-    });
+export interface MatrixCertification {
+    employeeId: string;
+    skillId: string;
+    achievedLevel: number;
+    expiresAt: string | Date | null;
+}
 
-    const [emps, allSkills, allReqs, allCerts] = await Promise.all([
-        empQuery,
-        skillsQuery,
-        reqsQuery,
-        certsQuery
-    ]);
-
+/**
+ * Pure function to calculate matrix data from raw inputs.
+ * Useful for testing and separation of concerns.
+ */
+export function calculateMatrixData(
+    emps: MatrixEmployee[], 
+    allSkills: MatrixSkill[], 
+    allReqs: MatrixRequirement[], 
+    allCerts: MatrixCertification[]
+): MatrixData {
     // Build Lookups
-    const certLookup = new Map<string, typeof allCerts[0]>();
+    const certLookup = new Map<string, MatrixCertification>();
     for (const c of allCerts) {
         certLookup.set(`${c.employeeId}:${c.skillId}`, c);
     }
@@ -99,22 +100,15 @@ export async function getMatrixData(
             for (const req of allReqs) {
                 if (req.skillId !== skill.id) continue;
 
-
                 // Logic: A requirement applies if the employee matches ALL non-null scopes defined in that requirement row.
-                // Wait, checking schema doc: "Scoping is done via nullable FKs... All NULL = global... siteId set = everyone at that site"
-                // Usually these are OR conditions across rows, but WITHIN a row, it's AND? 
-                // "uniqueIndex on skillId, siteId, deptId, roleId, projId" suggests a specific combination.
-                // Let's assume a row applies if the employee matches ALL defined non-null columns.
-                
                 const siteMatch = !req.siteId || req.siteId === emp.siteId;
                 const deptMatch = !req.departmentId || req.departmentId === emp.departmentId;
                 const roleMatch = !req.roleId || req.roleId === emp.roleId;
 
-                // Project match is tricky (Many-to-Many).
-                // Does this requirement specify a project?
+                // Project match (Many-to-Many)
                 let projectMatch = true;
                 if (req.projectId) {
-                    projectMatch = emp.projects.some(ep => ep.projectId === req.projectId);
+                    projectMatch = emp.projects?.some(ep => ep.projectId === req.projectId) ?? false;
                 }
 
                 if (siteMatch && deptMatch && roleMatch && projectMatch) {
@@ -122,7 +116,6 @@ export async function getMatrixData(
                         maxReqLevel = req.requiredLevel || 1;
                     }
                     
-                    // Generate formatted source string
                     const parts = [];
                     if (req.siteId) parts.push(`Site: ${req.site?.name}`);
                     if (req.departmentId) parts.push(`Dept: ${req.department?.name}`);
@@ -157,10 +150,6 @@ export async function getMatrixData(
                 if (cert && !isExpired) {
                     status = "extra";
                 } else if (cert && isExpired) {
-                    // Expired but not required? still expired technically, or none?
-                    // Let's call it 'none' or 'expired'? 'extra' implies useful.
-                    // If it's not required, does it matter if it's expired? 
-                    // Let's show as expired for visibility.
                     status = "expired"; 
                 }
             }
@@ -182,8 +171,8 @@ export async function getMatrixData(
             id: e.id,
             name: e.name,
             employeeNumber: e.employeeNumber,
-            siteName: e.site.name,
-            roleName: e.role?.name
+            siteName: e.site.name || "Unknown Site",
+            roleName: e.role?.name || undefined
         })),
         skills: allSkills.map(s => ({
             id: s.id,
@@ -193,4 +182,50 @@ export async function getMatrixData(
         })),
         cells
     };
+}
+
+export async function getMatrixData(
+    filters?: { siteId?: string; departmentId?: string }
+): Promise<MatrixData> {
+    // 1. Fetch Employees (with relations needed for scope matching)
+    // using Promise.all isn't always ideal if dependencies exist, but here they are independent fetches
+    // EXCEPT for employee count potentially being large.
+    
+    const emps = await db.query.employees.findMany({
+        where: filters?.siteId 
+            ? eq(employees.siteId, filters.siteId) 
+            : undefined, 
+        with: {
+            site: true,
+            department: true,
+            role: true,
+            projects: {
+                with: {
+                    project: true
+                }
+            }
+        }
+    });
+
+    // 2. Fetch All Skills
+    const allSkills = await db.query.skills.findMany({
+        where: isNull(skills.validityMonths) // Example condition, fetch all for now
+    });
+
+    // 3. Fetch All Requirements
+    const allReqs = await db.query.skillRequirements.findMany({
+        with: {
+            site: true,
+            department: true,
+            role: true,
+            project: true
+        }
+    });
+
+    // 4. Fetch All Employee Skills (Active)
+    const allCerts = await db.query.employeeSkills.findMany({
+        where: isNull(employeeSkills.revokedAt)
+    });
+
+    return calculateMatrixData(emps, allSkills, allReqs, allCerts);
 }
