@@ -63,7 +63,13 @@ export const users = pgTable('users', {
   id: text('id').primaryKey(),
   email: text('email').notNull().unique(),
   passwordHash: text('password_hash'),  // Null if SSO-only
-  appRole: text('app_role', { enum: ['admin', 'trainer', 'auditor', 'viewer'] }).default('viewer'),
+  // Roles:
+  // - admin: Full system access, user management
+  // - skill_manager: Manage skills catalog & requirements (HR/Training Coordinator, Quality Manager)
+  // - trainer: Certify employees on skills
+  // - auditor: Read-only access to all data
+  // - viewer: Read own skills only
+  appRole: text('app_role', { enum: ['admin', 'skill_manager', 'trainer', 'auditor', 'viewer'] }).default('viewer'),
   status: text('status', { enum: ['active', 'disabled'] }).default('active'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
   updatedAt: timestamp('updated_at').defaultNow().notNull(),

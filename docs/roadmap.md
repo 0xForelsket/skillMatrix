@@ -61,18 +61,28 @@ This roadmap assumes a 2-developer team working for ~6-7 weeks to MVP.
 
 ### 1.5.4 Role-Based Access Control (RBAC)
 
-| Route/Action | Admin | Trainer | Auditor | Viewer |
-|--------------|:-----:|:-------:|:-------:|:------:|
-| Manage Users | ✓ | | | |
-| Manage Skills Catalog | ✓ | | | |
-| Certify Employees | ✓ | ✓ | | |
-| Revoke Certifications | ✓ | | | |
-| View All Reports | ✓ | ✓ | ✓ | |
-| View Own Skills | ✓ | ✓ | ✓ | ✓ |
-| View Audit Logs | ✓ | | ✓ | |
+**Roles:**
+- **Admin** — Full system access, user management
+- **Skill Manager** — Manages skills catalog & requirements (HR/Training Coordinator, Quality Manager, Production Manager)
+- **Trainer** — Certifies employees on skills
+- **Auditor** — Read-only access to all data and audit logs
+- **Viewer** — Read own skills only
+
+| Route/Action | Admin | Skill Mgr | Trainer | Auditor | Viewer |
+|--------------|:-----:|:---------:|:-------:|:-------:|:------:|
+| Manage Users | ✓ | | | | |
+| Manage Skills Catalog | ✓ | ✓ | | | |
+| Manage Skill Requirements | ✓ | ✓ | | | |
+| Manage Skill Revisions | ✓ | ✓ | | | |
+| Certify Employees | ✓ | ✓ | ✓ | | |
+| Revoke Certifications | ✓ | ✓ | | | |
+| Manage Employees (CRUD) | ✓ | ✓ | | | |
+| View All Reports | ✓ | ✓ | ✓ | ✓ | |
+| View Own Skills | ✓ | ✓ | ✓ | ✓ | ✓ |
+| View Audit Logs | ✓ | | | ✓ | |
 
 - [ ] Create `src/lib/auth/permissions.ts` with `canAccess(user, action)` helper
-- [ ] Create React component `<RequireRole roles={['admin']}>` for UI gating
+- [ ] Create React component `<RequireRole roles={['admin', 'skill_manager']}>` for UI gating
 
 ### 1.5.5 User Management Page
 - [ ] Admin-only page at `/admin/users`
