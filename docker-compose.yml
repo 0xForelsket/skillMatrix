@@ -1,0 +1,28 @@
+version: '3.8'
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: dev
+      POSTGRES_PASSWORD: dev
+      POSTGRES_DB: caliber_dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg_data_dev:/var/lib/postgresql/data
+
+  rustfs:
+    image: rustfs/rustfs:0.9.2
+    command: server /data --address ":9000" --console-address ":9001"
+    environment:
+      RUSTFS_ROOT_USER: rustfsadmin
+      RUSTFS_ROOT_PASSWORD: rustfsadmin
+    ports:
+      - "9000:9000"   # S3 API
+      - "9001:9001"   # Web Console
+    volumes:
+      - rustfs_data_dev:/data
+
+volumes:
+  pg_data_dev:
+  rustfs_data_dev:
