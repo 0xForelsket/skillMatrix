@@ -6,6 +6,7 @@ import { BadgeCheck, AlertTriangle, XCircle, Clock, MapPin, Building2, Briefcase
 import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { RegenerateBadgeButton } from "./regenerate-badge-button";
+import { BadgeQRCode } from "./badge-qr-code";
 
 export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -72,7 +73,12 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                             "text-red-600"
                         }`}>{rate}%</div>
                         <div className="text-xs text-muted-foreground">{complianceOk} / {totalReqs} requirements met</div>
-                        <div className="pt-2">
+                        <div className="pt-2 flex gap-2 justify-end">
+                            <BadgeQRCode 
+                                badgeToken={employee.badgeToken} 
+                                employeeName={employee.name} 
+                                employeeNumber={employee.employeeNumber} 
+                            />
                             <RegenerateBadgeButton employeeId={employee.id} employeeName={employee.name} />
                         </div>
                     </div>
