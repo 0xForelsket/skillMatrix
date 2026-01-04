@@ -1,14 +1,13 @@
-
 "use server";
 
+import { asc, eq } from "drizzle-orm";
+import { nanoid } from "nanoid";
+import { revalidatePath } from "next/cache";
 import { headers } from "next/headers";
+import { z } from "zod";
 import { db } from "@/db";
 import { employees, users } from "@/db/schema";
-import { revalidatePath } from "next/cache";
-import { z } from "zod";
-import { logAudit, type AuditContext } from "@/lib/audit";
-import { eq, asc } from "drizzle-orm";
-import { nanoid } from "nanoid";
+import { type AuditContext, logAudit } from "@/lib/audit";
 
 // =============================================================================
 // Helpers
@@ -32,120 +31,201 @@ async function getContext(performerId?: string): Promise<AuditContext> {
 // Schemas
 // =============================================================================
 
-const createEmployeeSchema = z.object({
-    name: z.string().min(2),
-    employeeNumber: z.string().min(2),
-    email: z.string().email().optional().or(z.literal("")),
-    siteId: z.string(),
-    departmentId: z.string().optional(),
-    roleId: z.string().optional(),
+const employeeSchema = z.object({
+	name: z.string().min(2, "Name must be at least 2 characters"),
+	employeeNumber: z
+		.string()
+		.min(2, "Employee number must be at least 2 characters"),
+	email: z.string().email("Invalid email address").optional().or(z.literal("")),
+	siteId: z.string().min(1, "Site is required"),
+	departmentId: z.string().optional().nullable(),
+	roleId: z.string().optional().nullable(),
+	status: z.enum(["active", "terminated", "leave"]).default("active"),
+	photoUrl: z
+		.string()
+		.url("Invalid image URL")
+		.optional()
+		.or(z.literal(""))
+		.nullable(),
 });
 
+export type EmployeeFormData = z.infer<typeof employeeSchema>;
+
+export async function updateEmployee(
+	id: string,
+	data: EmployeeFormData & { performerId?: string },
+) {
+	const parsed = employeeSchema.safeParse(data);
+	if (!parsed.success) {
+		return { success: false, error: parsed.error.format() };
+	}
+
+	const context = await getContext(data.performerId);
+
+	try {
+		const existing = await db.query.employees.findFirst({
+			where: eq(employees.id, id),
+		});
+
+		if (!existing) {
+			return { success: false, error: "Employee not found" };
+		}
+
+		// Check if employee number is being changed to one that already exists
+		if (data.employeeNumber !== existing.employeeNumber) {
+			const duplicate = await db.query.employees.findFirst({
+				where: eq(employees.employeeNumber, data.employeeNumber),
+			});
+			if (duplicate) {
+				return { success: false, error: "Employee number already used" };
+			}
+		}
+
+		const [updated] = await db
+			.update(employees)
+			.set({
+				...parsed.data,
+				updatedAt: new Date(),
+			})
+			.where(eq(employees.id, id))
+			.returning();
+
+		await logAudit({
+			action: "update",
+			entityType: "employee",
+			entityId: id,
+			oldValue: existing,
+			newValue: updated,
+			context,
+		});
+
+		revalidatePath("/admin/employees");
+		revalidatePath(`/admin/employees/${id}`);
+		return { success: true, data: updated };
+	} catch (error) {
+		console.error("Failed to update employee:", error);
+		return { success: false, error: "Failed to update employee" };
+	}
+}
+
 export async function listEmployees() {
-    try {
-        const results = await db.query.employees.findMany({
-            with: {
-                site: true,
-                department: true,
-                role: true,
-            },
-            orderBy: [asc(employees.name)]
-        });
-        return { success: true, data: results };
-    } catch (error) {
-        console.error("Failed to list employees:", error);
-        return { success: false, error: "Failed to load employees" };
-    }
+	try {
+		const results = await db.query.employees.findMany({
+			with: {
+				site: true,
+				department: true,
+				role: true,
+			},
+			orderBy: [asc(employees.name)],
+		});
+		return { success: true, data: results };
+	} catch (error) {
+		console.error("Failed to list employees:", error);
+		return { success: false, error: "Failed to load employees" };
+	}
 }
 
 export async function getEmployee(id: string) {
-    try {
-        const result = await db.query.employees.findFirst({
-            where: eq(employees.id, id),
-            with: {
-                site: true,
-                department: true,
-                role: true,
-                user: true,
-                skills: {
-                    with: {
-                        skill: true,
-                        revision: true
-                    }
-                }
-            }
-        });
-        return { success: true, data: result };
-    } catch (error) {
-        console.error("Failed to get employee:", error);
-        return { success: false, error: "Failed to get employee" };
-    }
+	try {
+		const result = await db.query.employees.findFirst({
+			where: eq(employees.id, id),
+			with: {
+				site: true,
+				department: true,
+				role: true,
+				user: true,
+				skills: {
+					with: {
+						skill: true,
+						revision: true,
+					},
+				},
+			},
+		});
+		return { success: true, data: result };
+	} catch (error) {
+		console.error("Failed to get employee:", error);
+		return { success: false, error: "Failed to get employee" };
+	}
 }
 
-export async function createEmployee(data: z.infer<typeof createEmployeeSchema> & { performerId?: string }) {
-    const parsed = createEmployeeSchema.safeParse(data);
-    if (!parsed.success) {
-        return { success: false, error: parsed.error.format() };
-    }
+export async function createEmployee(
+	data: EmployeeFormData & { performerId?: string },
+) {
+	const parsed = employeeSchema.safeParse(data);
+	if (!parsed.success) {
+		return { success: false, error: parsed.error.format() };
+	}
 
-    const { name, employeeNumber, email, siteId, departmentId, roleId } = parsed.data;
-    const context = await getContext(data.performerId);
+	const {
+		name,
+		employeeNumber,
+		email,
+		siteId,
+		departmentId,
+		roleId,
+		status,
+		photoUrl,
+	} = parsed.data;
+	const context = await getContext(data.performerId);
 
-    try {
-        // Check for duplicates
-        const existing = await db.query.employees.findFirst({
-            where: eq(employees.employeeNumber, employeeNumber)
-        });
+	try {
+		// Check for duplicates
+		const existing = await db.query.employees.findFirst({
+			where: eq(employees.employeeNumber, employeeNumber),
+		});
 
-        if (existing) {
-            return { success: false, error: "Employee number already used" };
-        }
+		if (existing) {
+			return { success: false, error: "Employee number already used" };
+		}
 
-        const newEmployee = await db.transaction(async (tx) => {
-             const [inserted] = await tx.insert(employees).values({
-                name,
-                employeeNumber,
-                email: email || null,
-                siteId,
-                departmentId: departmentId || null,
-                roleId: roleId || null,
-                badgeToken: nanoid(32), // High entropy token for QR
-                status: "active",
-            }).returning();
-            return inserted;
-        });
+		const newEmployee = await db.transaction(async (tx) => {
+			const [inserted] = await tx
+				.insert(employees)
+				.values({
+					name,
+					employeeNumber,
+					email: email || null,
+					siteId,
+					departmentId: departmentId || null,
+					roleId: roleId || null,
+					photoUrl: photoUrl || null,
+					badgeToken: nanoid(32), // High entropy token for QR
+					status: status || "active",
+				})
+				.returning();
+			return inserted;
+		});
 
-        await logAudit({
-            action: "create",
-            entityType: "employee",
-            entityId: newEmployee.id,
-            newValue: newEmployee,
-            context
-        });
+		await logAudit({
+			action: "create",
+			entityType: "employee",
+			entityId: newEmployee.id,
+			newValue: newEmployee,
+			context,
+		});
 
-        revalidatePath("/admin/employees");
-        return { success: true, data: newEmployee };
-
-    } catch (error) {
-        console.error("Failed to create employee:", error);
-        return { success: false, error: "Failed to create employee" };
-    }
+		revalidatePath("/admin/employees");
+		return { success: true, data: newEmployee };
+	} catch (error) {
+		console.error("Failed to create employee:", error);
+		return { success: false, error: "Failed to create employee" };
+	}
 }
-
 
 // Helpers to fetch metadata for forms
 export async function getOrganizationMetadata() {
-     const [siteList, deptList, roleList] = await Promise.all([
-        db.query.sites.findMany(),
-        db.query.departments.findMany(),
-        db.query.roles.findMany(),
-    ]);
+	const [siteList, deptList, roleList] = await Promise.all([
+		db.query.sites.findMany(),
+		db.query.departments.findMany(),
+		db.query.roles.findMany(),
+	]);
 
-    return {
-        sites: siteList,
-        departments: deptList,
-        roles: roleList
-    };
+	return {
+		sites: siteList,
+		departments: deptList,
+		roles: roleList,
+	};
 }
 
 /**
@@ -198,7 +278,7 @@ export async function regenerateBadgeToken(data: {
 				reason: reason || "Security rotation",
 			},
 			context,
-			});
+		});
 
 		revalidatePath(`/admin/employees/${employeeId}`);
 		revalidatePath("/admin/employees");
@@ -371,7 +451,7 @@ export async function getAvailableUsersForLinking() {
 					columns: { userId: true },
 					where: (t, { isNotNull }) => isNotNull(t.userId),
 				})
-			).map((e) => e.userId)
+			).map((e) => e.userId),
 		);
 
 		// Return users with linking status
@@ -389,4 +469,3 @@ export async function getAvailableUsersForLinking() {
 		return { success: false, error: "Failed to get available users" };
 	}
 }
-
