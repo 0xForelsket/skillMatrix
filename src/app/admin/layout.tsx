@@ -4,6 +4,7 @@ import { auth, signOut } from "@/auth";
 import { db } from "@/db";
 import { users } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { SessionProvider } from "@/components/providers/session-provider";
 
 export default async function AdminLayout({
 	children,
@@ -26,8 +27,10 @@ export default async function AdminLayout({
 	}
 
 	return (
-		<div className="flex h-screen w-full flex-col">
-			<main className="flex-1 overflow-auto bg-gray-50">{children}</main>
-		</div>
+		<SessionProvider>
+			<div className="flex h-screen w-full flex-col">
+				<main className="flex-1 overflow-auto bg-gray-50">{children}</main>
+			</div>
+		</SessionProvider>
 	);
 }
