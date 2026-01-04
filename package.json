@@ -17,10 +17,12 @@
 		"db:seed": "bun run src/db/seed.ts"
 	},
 	"dependencies": {
+		"argon2": "^0.44.0",
 		"class-variance-authority": "^0.7.1",
 		"clsx": "^2.1.1",
 		"drizzle-orm": "^0.45.1",
 		"lucide-react": "^0.562.0",
+		"nanoid": "^5.1.6",
 		"next": "16.1.1",
 		"postgres": "^3.4.7",
 		"react": "19.2.3",
