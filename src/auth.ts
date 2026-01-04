@@ -13,8 +13,91 @@ import {
 	logAuthLogout,
 } from "@/lib/audit";
 
+// Re-check user status every 5 minutes
+const STATUS_CHECK_INTERVAL_MS = 5 * 60 * 1000;
+
 export const { auth, signIn, signOut, handlers } = NextAuth({
 	...authConfig,
+	callbacks: {
+		...authConfig.callbacks,
+		async jwt({ token, user, trigger }) {
+				// Initial sign-in: populate token with user data
+			if (user) {
+				token.sub = user.id;
+				token.role = (user as { appRole?: string }).appRole;
+				token.statusCheckedAt = Date.now();
+				token.isDisabled = false;
+			}
+
+			// Periodic status check for existing sessions
+			if (token.sub && trigger !== "signIn") {
+				const lastChecked = (token.statusCheckedAt as number) || 0;
+				const now = Date.now();
+
+				if (now - lastChecked > STATUS_CHECK_INTERVAL_MS) {
+					try {
+						const dbUser = await db.query.users.findFirst({
+							where: eq(users.id, token.sub),
+							columns: { status: true },
+						});
+
+						if (!dbUser || dbUser.status !== "active") {
+							// User has been disabled - flag for session invalidation
+							token.isDisabled = true;
+						} else {
+							token.isDisabled = false;
+						}
+						token.statusCheckedAt = now;
+					} catch {
+						// On DB error, don't invalidate - will retry next interval
+					}
+				}
+			}
+
+			return token;
+		},
+		async session({ session, token }) {
+			// Propagate user ID and role to session
+			if (token.sub && session.user) {
+				session.user.id = token.sub;
+			}
+			if (token.role && session.user) {
+				// @ts-expect-error - will fix types later
+				session.user.role = token.role;
+			}
+
+			// Mark session as disabled if user was disabled
+			if (token.isDisabled) {
+				// @ts-expect-error - custom property
+				session.isDisabled = true;
+			}
+
+			return session;
+		},
+		authorized({ auth, request: { nextUrl } }) {
+			const isLoggedIn = !!auth?.user;
+			const isOnAdmin = nextUrl.pathname.startsWith("/admin");
+			const isOnLogin = nextUrl.pathname.startsWith("/login");
+
+			// Check if session is disabled
+			// @ts-expect-error - custom property
+			if (auth?.isDisabled) {
+				// Redirect to login with error indicator
+				return Response.redirect(new URL("/login?error=disabled", nextUrl));
+			}
+
+			if (isOnAdmin) {
+				if (isLoggedIn) return true;
+				return false; // Redirect to login
+			}
+
+			if (isOnLogin && isLoggedIn) {
+				return Response.redirect(new URL("/admin", nextUrl));
+			}
+
+			return true;
+		},
+	},
 	events: {
 		async signIn({ user }) {
 			// Log successful login
@@ -28,7 +111,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 				});
 			}
 		},
-			async signOut(message) {
+		async signOut(message) {
 			// Log logout - handle both JWT and session-based auth
 			const userId = "token" in message ? message.token?.sub : message.session?.userId;
 			if (userId) {
