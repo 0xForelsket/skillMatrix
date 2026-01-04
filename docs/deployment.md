@@ -54,6 +54,31 @@ CMD ["bun", "server.js"]
 
 ---
 
+## Required Next.js Configuration
+
+The production Dockerfile uses Next.js standalone output. You **must** configure this in `next.config.js`:
+
+```javascript
+// next.config.js
+/** @type {import('next').NextConfig} */
+const nextConfig = {
+  output: 'standalone',  // Required for Docker deployment
+  
+  // Recommended: Enable experimental features for Bun compatibility
+  experimental: {
+    serverActions: {
+      bodySizeLimit: '2mb',
+    },
+  },
+};
+
+module.exports = nextConfig;
+```
+
+> ⚠️ **Without `output: 'standalone'`**, the Docker build will fail because `.next/standalone` won't exist.
+
+---
+
 ## Docker Compose (Production)
 
 Full stack with PostgreSQL, RustFS (S3), and the application.
@@ -79,7 +104,7 @@ services:
       retries: 5
 
   rustfs:
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:0.9.2  # Pin version for production stability
     command: server /data --address ":9000" --console-address ":9001"
     restart: always
     environment:
@@ -144,7 +169,7 @@ services:
       - pg_data_dev:/var/lib/postgresql/data
 
   rustfs:
-    image: rustfs/rustfs:latest
+    image: rustfs/rustfs:0.9.2  # Match production version
     command: server /data --address ":9000" --console-address ":9001"
     environment:
       RUSTFS_ROOT_USER: rustfsadmin
@@ -200,6 +225,37 @@ openssl rand -base64 32
 | **Memory Safety** | Rust guarantees | Go GC |
 
 For commercial/on-prem deployments, RustFS avoids the AGPL licensing concerns.
+
+### S3 Alternatives
+
+If RustFS isn't available or you prefer managed services:
+
+| Provider | When to Use | Configuration |
+|----------|-------------|---------------|
+| **AWS S3** | Cloud deployments, high availability | Set `S3_ENDPOINT` to region endpoint |
+| **CloudFlare R2** | Zero egress costs, global CDN | S3-compatible, set endpoint to R2 URL |
+| **DigitalOcean Spaces** | Simple cloud storage | S3-compatible |
+| **Backblaze B2** | Cost-effective archival | S3-compatible API |
+
+**Example: AWS S3 Configuration**
+```bash
+S3_ENDPOINT=https://s3.us-east-1.amazonaws.com
+S3_REGION=us-east-1
+S3_ACCESS_KEY=AKIA...
+S3_SECRET_KEY=...
+S3_BUCKET=caliber-uploads
+```
+
+**Example: CloudFlare R2 Configuration**
+```bash
+S3_ENDPOINT=https://<account-id>.r2.cloudflarestorage.com
+S3_REGION=auto
+S3_ACCESS_KEY=...
+S3_SECRET_KEY=...
+S3_BUCKET=caliber-uploads
+```
+
+> 💡 **Tip:** R2 has no egress fees, making it ideal for serving badge photos and training documents.
 
 ---
 

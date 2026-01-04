@@ -4,7 +4,7 @@ A comprehensive skill tracking and certification management system designed for 
 
 ## Tech Stack
 
-- **Framework:** Next.js 16 (App Router)
+- **Framework:** Next.js 15 (App Router)
 - **Runtime:** Bun
 - **Database:** PostgreSQL 16 + Drizzle ORM
 - **File Storage:** RustFS (S3-compatible, Apache 2.0 licensed)
@@ -16,9 +16,11 @@ A comprehensive skill tracking and certification management system designed for 
 
 | Document | Description |
 |----------|-------------|
-| [Schema](./schema.md) | Complete Drizzle schema, ERD, Gap Analysis SQL, audit logging |
+| [Schema](./schema.md) | Complete Drizzle schema, ERD, [Gap Analysis SQL](./schema.md#gap-analysis-sql-query), audit logging |
 | [Roadmap](./roadmap.md) | 7-phase implementation plan with checklists |
 | [Deployment](./deployment.md) | Docker configs, RustFS setup, backup strategy |
+| [Data Migration](./data-migration.md) | Patterns for department merges, skill changes, bulk imports |
+| [Internationalization](./i18n.md) | Multi-language support with next-intl |
 
 ## Key Features
 
@@ -53,10 +55,10 @@ docker compose up -d
 aws --endpoint-url http://localhost:9000 s3 mb s3://caliber-uploads
 
 # Run migrations
-bun drizzle-kit push
+bun run db:push
 
 # Seed database
-bun run seed
+bun run db:seed
 
 # Start dev server
 bun run dev
@@ -147,7 +149,7 @@ bun run build        # Build for production
 bun run lint         # Run Biome linter
 bun run test         # Run unit tests
 bun run test:e2e     # Run E2E tests
-bun run seed         # Seed database with sample data
+bun run db:seed      # Seed database with sample data
 bun run db:push      # Push schema changes
 bun run db:generate  # Generate migrations
 ```

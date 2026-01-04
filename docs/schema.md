@@ -2,6 +2,24 @@
 
 This schema is designed for Drizzle ORM with PostgreSQL. It enforces **Site Scoping**, **Version Control**, and **UUIDv7** throughout.
 
+## Table of Contents
+
+- [Design Principles](#design-principles)
+- [Complete Schema](#complete-schema-srcdbschemats)
+- [Database Triggers & Functions](#database-triggers--functions)
+  - [Auto-Update Trigger](#auto-update-updated_at-trigger)
+  - [Soft Delete Helper](#soft-delete-query-helper)
+- [Gap Analysis SQL Query](#gap-analysis-sql-query)
+- [Entity Relationship Diagram](#entity-relationship-diagram)
+- [Key Design Decisions](#key-design-decisions)
+  - [Users vs Employees](#users-vs-employees)
+  - [Badge Token vs Employee Number](#badge-token-vs-employee-number)
+  - [Skill Requirements Scoping](#skill-requirements-scoping)
+  - [Certification Revocation](#certification-revocation)
+- [Recommended Indexes](#recommended-indexes)
+
+---
+
 ## Design Principles
 
 1. **UUIDv7 for IDs:** Sortable, globally unique, application-generated

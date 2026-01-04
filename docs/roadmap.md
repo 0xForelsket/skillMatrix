@@ -24,13 +24,58 @@ This roadmap assumes a 2-developer team working for ~6-7 weeks to MVP.
 - [ ] Run `bun drizzle-kit generate` and `bun drizzle-kit push`
 - [ ] Apply `updated_at` trigger (see schema.md for DDL)
 
-### 1.4 Seeding Script (`src/scripts/seed.ts`)
-- [ ] Create script to generate baseline data:
-  - 1 Site ("Headquarters")
-  - 3 Departments (Molding, Assembly, HR)
-  - 5 Roles (Technician L1, Technician L2, Lead, Supervisor, Manager)
-  - 1 Admin user for login
-- [ ] Ensures every dev has identical baseline data
+### 1.4 Seeding Script (`src/db/seed.ts`)
+
+Create a comprehensive seed script that populates test data for all features:
+
+```bash
+bun run db:seed  # Defined in package.json as: bun run src/db/seed.ts
+```
+
+**Required Seed Data:**
+
+- [ ] **Organization Structure:**
+  - 2 Sites: "Austin Plant" (ATX-01), "Detroit Plant" (DTR-01)
+  - 4 Departments: Production, Quality, Maintenance, HR
+  - 5 Roles: Operator L1, Operator L2, Technician, Lead, Supervisor
+
+- [ ] **Users & Employees:**
+  - 1 Admin user (admin@caliber.local / admin123)
+  - 1 Skill Manager (hr@caliber.local)
+  - 2 Trainers (trainer1@caliber.local, trainer2@caliber.local)
+  - 1 Auditor (auditor@caliber.local)
+  - 10 Sample employees (mix of sites/departments)
+    - 5 with user accounts (can log in)
+    - 5 without user accounts (badge-only)
+
+- [ ] **Skills Catalog:**
+  - 5 Skills with varying configurations:
+    - "Safety Protocols" (no expiry, 1 level, 2 revisions: Rev A archived, Rev B active)
+    - "Forklift Operation" (12-month expiry, 1 level)
+    - "Injection Molding" (24-month expiry, 3 levels)
+    - "Quality Inspection" (6-month expiry, 2 levels)
+    - "First Aid" (12-month expiry, 1 level, external certification)
+
+- [ ] **Skill Requirements:**
+  - Global: Everyone needs "Safety Protocols"
+  - Site-specific: Austin needs "Injection Molding" (it's a molding plant)
+  - Department-specific: Production needs "Quality Inspection"
+  - Role-specific: Operators L2+ need "Forklift Operation"
+
+- [ ] **Employee Skills (Test Scenarios):**
+  - Employee A: All skills valid (VALID)
+  - Employee B: Missing "Forklift" requirement (MISSING)
+  - Employee C: Certified on archived revision (OUTDATED)
+  - Employee D: Skill expires in 15 days (EXPIRING_SOON)
+  - Employee E: Has Level 1, needs Level 2 (INSUFFICIENT_LEVEL)
+  - Employee F: Had skill revoked (tests revocation flow)
+
+- [ ] **Test Data Validation:**
+  - Run gap analysis on each employee
+  - Assert expected status for each scenario
+  - Log summary: "Seed complete: X employees, Y skills, Z certifications"
+
+> 💡 **This seed data enables testing the gap analysis feature immediately after setup.**
 
 ### 1.5 Audit Logging Setup
 - [ ] Create `src/lib/audit.ts` with `logAudit(action, entityType, entityId, oldValue, newValue)` helper
@@ -128,9 +173,50 @@ This roadmap assumes a 2-developer team working for ~6-7 weeks to MVP.
 *Goal: Allow HR/Admins to manage the catalog.*
 
 ### 3.1 Error Handling & UX Patterns
-- [ ] Set up global error boundary
-- [ ] Create toast notification system (sonner or similar)
+
+**Global Error Boundary:**
+- [ ] Create `app/error.tsx` for route-level errors
+- [ ] Create `app/global-error.tsx` for root layout errors
+- [ ] Show user-friendly message + "Report Issue" button
+- [ ] Log errors to console in dev, reporting service in prod
+
+**Toast Notification System:**
+- [ ] Install `sonner` for toast notifications
+- [ ] Create `src/lib/toast.ts` with typed helpers:
+  ```typescript
+  export const showSuccess = (message: string) => toast.success(message);
+  export const showError = (message: string) => toast.error(message);
+  export const showLoading = (message: string) => toast.loading(message);
+  ```
+
+**Server Action Error Handling:**
+```typescript
+// Pattern for all Server Actions
+export async function createEmployee(data: CreateEmployeeInput) {
+  try {
+    const validated = createEmployeeSchema.parse(data);
+    const result = await db.insert(employees).values(validated).returning();
+    await logAudit('create', 'employee', result[0].id, null, result[0]);
+    return { success: true, data: result[0] };
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return { success: false, error: 'Validation failed', details: error.flatten() };
+    }
+    console.error('createEmployee failed:', error);
+    return { success: false, error: 'Failed to create employee' };
+  }
+}
+```
+
+**Error Reporting (Production):**
+- [ ] Integrate Sentry or similar error tracking
+- [ ] Configure source maps for stack traces
+- [ ] Set up error alerting for critical failures
+
+**Form Validation:**
 - [ ] Create form validation patterns with Zod + react-hook-form
+- [ ] Show inline validation errors
+- [ ] Disable submit button while loading
 
 ### 3.2 Employees Page
 - [ ] Data Table with filters (Site, Dept, Status)
@@ -272,19 +358,49 @@ This roadmap assumes a 2-developer team working for ~6-7 weeks to MVP.
 ### 6.1 Offline State Management
 - [ ] Install **TanStack Query (React Query)** with built-in offline caching
 - [ ] Configure `staleTime: Infinity` for Skills Catalog (rarely changes)
-- [ ] Persist query cache to IndexedDB
+- [ ] Persist query cache to IndexedDB using `@tanstack/query-sync-storage-persister`
+- [ ] Configure cache expiration (24 hours for most data)
 
 ### 6.2 The "Pending Sync" Queue
 - [ ] If offline, store "New Certifications" in IndexedDB (use Dexie.js)
 - [ ] Create global `useOnlineStatus` hook
-- [ ] Visual indicator when offline
+- [ ] Visual indicator when offline (banner + icon)
 - [ ] When back online, iterate queue and POST to Server Actions
-- [ ] Handle conflicts (last-write-wins with notification to admin)
+
+**Conflict Resolution Strategy:**
+
+When syncing offline changes, conflicts can occur. Here's the handling:
+
+| Scenario | Resolution | User Notification |
+|----------|------------|-------------------|
+| Same employee certified by two trainers offline | **Last-write-wins** by `achievedAt` timestamp | Toast: "Certification updated by [other trainer]" |
+| Employee terminated while offline certification pending | **Reject sync**, keep in queue | Error: "Employee no longer active - contact admin" |
+| Skill revision changed while offline | **Accept with warning** | Toast: "Certified on outdated revision - recertification recommended" |
+| Duplicate certification (same skill, same day) | **Merge**, keep higher level | Silent merge, log to audit |
+
+**Conflict Queue UI (`/admin/sync-conflicts`):**
+- [ ] List all unresolved conflicts
+- [ ] Show: Employee, Skill, Conflicting Values, Timestamps
+- [ ] Actions: Accept Local, Accept Remote, Merge (for levels)
+- [ ] Admin-only access
+- [ ] Email notification when conflicts need review
+
+**Audit Trail for Conflicts:**
+```typescript
+await logAudit('conflict_resolved', 'employee_skill', id, {
+  localValue: { achievedAt: '...', certifiedBy: 'trainer1' },
+  remoteValue: { achievedAt: '...', certifiedBy: 'trainer2' },
+  resolution: 'last_write_wins',
+  resolvedBy: 'system' // or userId if manual
+});
+```
 
 ### 6.3 Service Worker (PWA)
-- [ ] Install as PWA on tablets
-- [ ] Cache static assets
-- [ ] Show offline indicator in app
+- [ ] Install as PWA on tablets using `next-pwa` or `@serwist/next`
+- [ ] Cache static assets (JS, CSS, fonts, icons)
+- [ ] Cache API responses for offline reads
+- [ ] Show offline indicator in app header
+- [ ] Queue mutations when offline
 
 ---
 
