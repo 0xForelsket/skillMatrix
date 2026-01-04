@@ -17,10 +17,10 @@ function ScopeBadge({
 }) {
 	if (!value) return null;
 	return (
-		<span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-slate-800/50 border border-white/5 text-xs text-slate-300">
-			<Icon className="h-3 w-3 text-indigo-400" />
-			<span className="font-medium text-slate-500">{label}:</span>
-			<span className="text-white">{value}</span>
+		<span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-muted text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+			<Icon className="h-3 w-3 text-primary/50" />
+			<span>{label}:</span>
+			<span className="text-foreground">{value}</span>
 		</span>
 	);
 }
@@ -52,29 +52,32 @@ export default async function RequirementsPage() {
 				<NewRequirementDialog metadata={metadata} />
 			</div>
 
-			<div className="rounded-xl border border-white/10 bg-slate-950/50 shadow-sm overflow-hidden">
+			<div className="rounded-md border bg-card text-card-foreground shadow-sm">
 				<div className="overflow-x-auto">
 					<table className="w-full text-sm">
-						<thead className="bg-slate-900/50 border-b border-white/5">
-							<tr>
-								<th className="h-12 px-4 text-left font-medium text-slate-400">
+						<thead className="[&_tr]:border-b">
+							<tr className="border-b transition-colors hover:bg-muted/50 text-left">
+								<th className="h-12 px-4 align-middle font-medium text-muted-foreground">
 									Required Skill
 								</th>
-								<th className="h-12 px-4 text-left font-medium text-slate-400">
+								<th className="h-12 px-4 align-middle font-medium text-muted-foreground">
 									Level
 								</th>
-								<th className="h-12 px-4 text-left font-medium text-slate-400">
+								<th className="h-12 px-4 align-middle font-medium text-muted-foreground">
 									Scope (Applies To)
 								</th>
-								<th className="h-12 px-4 text-right font-medium text-slate-400">
+								<th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
 									Actions
 								</th>
 							</tr>
 						</thead>
-						<tbody className="divide-y divide-white/5">
+						<tbody className="[&_tr]:border-b [&_tr:last-child]:border-0">
 							{requirements.length === 0 ? (
 								<tr>
-									<td colSpan={4} className="p-8 text-center text-slate-500">
+									<td
+										colSpan={4}
+										className="p-8 text-center text-muted-foreground"
+									>
 										No requirements defined yet.
 									</td>
 								</tr>
@@ -82,35 +85,35 @@ export default async function RequirementsPage() {
 								requirements.map((req) => (
 									<tr
 										key={req.id}
-										className="hover:bg-white/5 transition-colors"
+										className="border-b transition-colors hover:bg-muted/50"
 									>
-										<td className="p-4 font-medium text-white">
+										<td className="p-4 align-middle font-medium">
 											{req.skill.name}
 										</td>
-										<td className="p-4">
+										<td className="p-4 align-middle">
 											<div className="flex items-center gap-1">
 												{[1, 2, 3, 4, 5].map((l) => (
 													<div
 														key={l}
 														className={`h-1.5 w-3 rounded-full ${
 															l <= (req.requiredLevel || 1)
-																? "bg-indigo-500"
-																: "bg-slate-800"
+																? "bg-primary"
+																: "bg-muted"
 														}`}
 													/>
 												))}
-												<span className="ml-2 text-xs text-slate-400 font-mono">
+												<span className="ml-2 text-xs text-muted-foreground font-mono">
 													L{req.requiredLevel}
 												</span>
 											</div>
 										</td>
-										<td className="p-4">
+										<td className="p-4 align-middle">
 											<div className="flex flex-wrap gap-2">
 												{!req.siteId &&
 													!req.departmentId &&
 													!req.roleId &&
 													!req.projectId && (
-														<span className="text-slate-500 italic">
+														<span className="text-muted-foreground italic text-xs">
 															Global (All Employees)
 														</span>
 													)}
@@ -136,7 +139,7 @@ export default async function RequirementsPage() {
 												/>
 											</div>
 										</td>
-										<td className="p-4 text-right">
+										<td className="p-4 align-middle text-right">
 											<DeleteRequirementButton id={req.id} />
 										</td>
 									</tr>

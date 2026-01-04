@@ -26,7 +26,7 @@ export const authConfig = {
 				session.user.id = token.sub;
 			}
 			if (token.role && session.user) {
-				// @ts-expect-error - will fix types later
+				// @ts-ignore
 				session.user.role = token.role;
 			}
 			return session;
@@ -34,7 +34,7 @@ export const authConfig = {
 		async jwt({ token, user }) {
 			if (user) {
 				token.sub = user.id;
-				// @ts-expect-error
+				// @ts-ignore
 				token.role = user.appRole;
 			}
 			return token;

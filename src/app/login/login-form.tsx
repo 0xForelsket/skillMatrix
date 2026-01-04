@@ -3,6 +3,9 @@
 import { Loader2 } from "lucide-react";
 import { useActionState } from "react";
 import { authenticate } from "@/actions/auth";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export function LoginForm({ errorId }: { errorId?: string }) {
 	const [errorMessage, formAction, isPending] = useActionState(
@@ -22,66 +25,65 @@ export function LoginForm({ errorId }: { errorId?: string }) {
 	return (
 		<div className="flex flex-col gap-6">
 			<div className="flex flex-col items-center gap-2 text-center">
-				<h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
-				<p className="text-sm text-muted-foreground">
-					Enter your email below to login to your account
+				<h1 className="text-2xl font-bold tracking-tight text-foreground">Welcome back</h1>
+				<p className="text-sm text-muted-foreground leading-relaxed">
+					Enter your credentials to access the Caliber dashboard.
 				</p>
 			</div>
 			<div className="grid gap-6">
 				<form action={formAction}>
 					<div className="grid gap-4">
-						<div className="grid gap-2">
-							<label
+						<div className="grid gap-1.5">
+							<Label
 								htmlFor="email"
-								className="text-sm font-medium leading-none"
+								className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
 							>
-								Email
-							</label>
-							<input
+								Email Address
+							</Label>
+							<Input
 								id="email"
 								type="email"
 								name="email"
-								placeholder="m@example.com"
+								placeholder="admin@caliber.io"
 								required
-								className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+								className="h-10 border-muted-foreground/20 focus-visible:ring-primary/20"
 							/>
 						</div>
-						<div className="grid gap-2">
+						<div className="grid gap-1.5">
 							<div className="flex items-center">
-								<label
+								<Label
 									htmlFor="password"
-									className="text-sm font-medium leading-none"
+									className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground"
 								>
 									Password
-								</label>
+								</Label>
 								<a
 									href="/forgot-password"
-									className="ml-auto text-sm underline-offset-4 hover:underline"
+									className="ml-auto text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-primary transition-colors"
 								>
-									Forgot your password?
+									Forgot?
 								</a>
 							</div>
-							<input
+							<Input
 								id="password"
 								type="password"
 								name="password"
 								required
-								className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+								className="h-10 border-muted-foreground/20 focus-visible:ring-primary/20"
 							/>
 						</div>
-						<button
+						<Button
 							type="submit"
 							disabled={isPending}
-							className="inline-flex h-9 w-full items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow transition-colors hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50"
+							className="h-10 w-full mt-2 font-bold text-xs uppercase tracking-widest shadow-md"
 						>
-							{isPending ? (
-								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-							) : null}
+							{isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
 							Sign In
-						</button>
+						</Button>
+						
 						{displayError && (
 							<div
-								className="flex items-center rounded-md border border-destructive/20 bg-destructive/10 p-3 text-sm text-destructive"
+								className="flex items-center rounded-md border border-destructive/20 bg-destructive/10 p-3 text-xs font-medium text-destructive animate-in fade-in slide-in-from-top-1"
 								role="alert"
 							>
 								<p>{displayError}</p>
@@ -89,13 +91,16 @@ export function LoginForm({ errorId }: { errorId?: string }) {
 						)}
 					</div>
 				</form>
-				<div className="relative text-center text-sm after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border">
-					<span className="relative z-10 bg-background px-2 text-muted-foreground">
-						Or continue with
+				<div className="relative text-center text-[10px] font-bold uppercase tracking-widest after:absolute after:inset-0 after:top-1/2 after:z-0 after:flex after:items-center after:border-t after:border-border/50">
+					<span className="relative z-10 bg-card px-3 text-muted-foreground/50">
+						Enterprise Access
 					</span>
 				</div>
-				<div className="flex justify-center text-xs text-muted-foreground">
-					<p>Contact IT for SSO access.</p>
+				<div className="flex flex-col items-center gap-2">
+					<p className="text-[11px] text-muted-foreground text-center leading-relaxed">
+						SSO is restricted to registered company domains.<br />
+						<span className="font-semibold text-primary/70">Contact IT Support</span> to link your identity provider.
+					</p>
 				</div>
 			</div>
 		</div>
