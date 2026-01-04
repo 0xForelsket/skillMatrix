@@ -2,7 +2,6 @@ import { db } from "@/db";
 import {
     employees,
     skills,
-    skillRequirements,
     employeeSkills,
 } from "@/db/schema";
 import { eq, isNull } from "drizzle-orm";
@@ -39,8 +38,8 @@ export interface MatrixEmployee {
     site: { name: string };
     roleId?: string | null;
     role?: { name: string } | null;
-    departmentId: string;
-    department: { name: string };
+    departmentId: string | null;
+    department: { name: string } | null;
     projects: { projectId: string; project: { name: string } }[];
 }
 
