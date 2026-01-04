@@ -19,6 +19,7 @@ A comprehensive skill tracking and certification management system designed for 
 | [Schema](./schema.md) | Complete Drizzle schema, ERD, [Gap Analysis SQL](./schema.md#gap-analysis-sql-query), audit logging |
 | [Roadmap](./roadmap.md) | 7-phase implementation plan with checklists |
 | [Deployment](./deployment.md) | Docker configs, RustFS setup, backup strategy |
+| [Auth Architecture](./auth-architecture.md) | Users vs Employees, RBAC, badge-based identification |
 | [Data Migration](./data-migration.md) | Patterns for department merges, skill changes, bulk imports |
 | [Internationalization](./i18n.md) | Multi-language support with next-intl |
 
