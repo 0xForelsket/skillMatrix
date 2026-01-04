@@ -7,6 +7,7 @@ import { db } from "@/db";
 import { users } from "@/db/schema";
 import { verifyPassword } from "@/lib/password";
 import { authConfig } from "./auth.config";
+import { checkAuthGuard } from "@/lib/auth-guard";
 import {
 	logAuthLogin,
 	logAuthLoginFailed,
@@ -75,27 +76,7 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 			return session;
 		},
 		authorized({ auth, request: { nextUrl } }) {
-			const isLoggedIn = !!auth?.user;
-			const isOnAdmin = nextUrl.pathname.startsWith("/admin");
-			const isOnLogin = nextUrl.pathname.startsWith("/login");
-
-			// Check if session is disabled
-			// @ts-expect-error - custom property
-			if (auth?.isDisabled) {
-				// Redirect to login with error indicator
-				return Response.redirect(new URL("/login?error=disabled", nextUrl));
-			}
-
-			if (isOnAdmin) {
-				if (isLoggedIn) return true;
-				return false; // Redirect to login
-			}
-
-			if (isOnLogin && isLoggedIn) {
-				return Response.redirect(new URL("/admin", nextUrl));
-			}
-
-			return true;
+            return checkAuthGuard(auth, nextUrl);
 		},
 	},
 	events: {
@@ -194,4 +175,3 @@ export const { auth, signIn, signOut, handlers } = NextAuth({
 		}),
 	],
 });
-
