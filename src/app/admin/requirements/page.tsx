@@ -38,12 +38,10 @@ export default async function RequirementsPage() {
 	const requirements = requirementsRes.data || [];
 
 	return (
-		<div className="flex flex-col gap-6 p-6 md:p-8">
+		<div className="flex flex-col gap-6 p-6 md:p-8 max-w-7xl mx-auto w-full">
 			<div className="flex items-center justify-between">
 				<div className="space-y-1">
-					<h2 className="text-2xl font-bold tracking-tight">
-						Skill Requirements
-					</h2>
+					<h1 className="text-page-title">Skill Requirements</h1>
 					<p className="text-muted-foreground">
 						Define which skills are mandatory for specific roles, sites, or
 						projects.
@@ -52,21 +50,21 @@ export default async function RequirementsPage() {
 				<NewRequirementDialog metadata={metadata} />
 			</div>
 
-			<div className="rounded-md border bg-card text-card-foreground shadow-sm">
+			<div className="rounded-xl border bg-card text-card-foreground shadow-sm">
 				<div className="overflow-x-auto">
 					<table className="w-full text-sm">
-						<thead className="[&_tr]:border-b">
-							<tr className="border-b transition-colors hover:bg-muted/50 text-left">
-								<th className="h-12 px-4 align-middle font-medium text-muted-foreground">
+						<thead className="bg-muted/50 border-b">
+							<tr>
+								<th className="h-12 px-4 align-middle text-label">
 									Required Skill
 								</th>
-								<th className="h-12 px-4 align-middle font-medium text-muted-foreground">
+								<th className="h-12 px-4 align-middle text-label">
 									Level
 								</th>
-								<th className="h-12 px-4 align-middle font-medium text-muted-foreground">
+								<th className="h-12 px-4 align-middle text-label">
 									Scope (Applies To)
 								</th>
-								<th className="h-12 px-4 text-right align-middle font-medium text-muted-foreground">
+								<th className="h-12 px-4 text-right align-middle text-label">
 									Actions
 								</th>
 							</tr>
