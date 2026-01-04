@@ -31,6 +31,7 @@ export type EntityType =
 	| "skill_revision"
 	| "skill_requirement"
 	| "employee_skill"
+	| "certification"
 	| "attachment"
 	| "session";
 

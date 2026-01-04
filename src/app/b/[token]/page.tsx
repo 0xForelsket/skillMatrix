@@ -83,9 +83,15 @@ function StatusBadge({ status }: { status: SkillStatus }) {
 	);
 }
 
+
+import { auth } from "@/auth";
+import { can } from "@/lib/permissions";
+import { QuickCertifyFlow } from "./quick-certify-flow";
+
 export default async function BadgeViewerPage({ params }: BadgePageProps) {
 	const { token } = await params;
 	const employee = await getEmployeeByBadgeToken(token);
+	const session = await auth();
 
 	if (!employee) {
 		notFound();
@@ -124,22 +130,30 @@ export default async function BadgeViewerPage({ params }: BadgePageProps) {
 		return status === "expired" || status === "revoked";
 	});
 
+	const showTrainerActions = can(session, "certifications:create");
+
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
 			{/* Header */}
 			<header className="border-b border-white/10 bg-white/5 backdrop-blur-sm">
-				<div className="mx-auto max-w-2xl px-4 py-4">
+				<div className="mx-auto max-w-2xl px-4 py-4 flex justify-between items-center">
 					<div className="flex items-center gap-2 text-sm text-slate-400">
 						<Award className="h-4 w-4" />
 						<span>Caliber Skills Verification</span>
 					</div>
+					{session?.user && (
+						<div className="flex items-center gap-2 text-xs text-indigo-400 font-medium">
+							<div className="h-1.5 w-1.5 rounded-full bg-indigo-500 animate-pulse" />
+							Trainer: {session.user.email}
+						</div>
+					)}
 				</div>
 			</header>
 
 			{/* Main Content */}
 			<main className="mx-auto max-w-2xl px-4 py-8">
 				{/* Employee Card */}
-				<div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden">
+				<div className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-sm overflow-hidden shadow-2xl">
 					{/* Employee Header */}
 					<div className="bg-gradient-to-r from-indigo-600/20 to-purple-600/20 p-6">
 						<div className="flex items-center gap-4">
@@ -185,7 +199,7 @@ export default async function BadgeViewerPage({ params }: BadgePageProps) {
 					</div>
 
 					{/* Skills Summary */}
-					<div className="border-b border-white/10 p-4">
+					<div className="border-b border-white/10 p-4 bg-white/5">
 						<div className="flex items-center justify-between">
 							<div className="flex items-center gap-3">
 								<div className="flex items-center gap-1.5">
@@ -201,13 +215,13 @@ export default async function BadgeViewerPage({ params }: BadgePageProps) {
 										<span className="text-sm font-medium text-white">
 											{expiredSkills.length}
 										</span>
-										<span className="text-sm text-slate-400">
+										<span className="text-sm text-slate-400 whitespace-nowrap">
 											Expired/Revoked
 										</span>
 									</div>
 								)}
 							</div>
-							<span className="text-xs text-slate-500">
+							<span className="text-xs text-slate-500 bg-black/30 px-2 py-1 rounded-md border border-white/5">
 								ID: {employee.employeeNumber}
 							</span>
 						</div>
@@ -284,7 +298,7 @@ export default async function BadgeViewerPage({ params }: BadgePageProps) {
 				</div>
 
 				{/* Footer */}
-				<div className="mt-6 text-center text-xs text-slate-500">
+				<div className="mt-6 text-center text-xs text-slate-500 pb-20">
 					<p>
 						Verified on {format(new Date(), "MMMM d, yyyy 'at' h:mm a")}
 					</p>
@@ -294,6 +308,14 @@ export default async function BadgeViewerPage({ params }: BadgePageProps) {
 					</p>
 				</div>
 			</main>
+
+			{/* Trainer Actions */}
+			{showTrainerActions && (
+				<QuickCertifyFlow 
+					employeeId={employee.id} 
+					employeeName={employee.name} 
+				/>
+			)}
 		</div>
 	);
 }
