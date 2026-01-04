@@ -7,6 +7,7 @@ import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import { RegenerateBadgeButton } from "./regenerate-badge-button";
 import { BadgeQRCode } from "./badge-qr-code";
+import { UserLinkManager } from "./user-link-manager";
 
 export default async function EmployeeDetailPage({ params }: { params: Promise<{ id: string }> }) {
     const { id } = await params;
@@ -83,6 +84,17 @@ export default async function EmployeeDetailPage({ params }: { params: Promise<{
                         </div>
                     </div>
                 </div>
+            </div>
+
+            {/* User Account Link Section */}
+            <div className="rounded-xl border bg-card text-card-foreground shadow-sm p-6">
+                <h2 className="text-lg font-semibold mb-4">User Account</h2>
+                <UserLinkManager
+                    employeeId={employee.id}
+                    employeeName={employee.name}
+                    currentUserId={employee.userId}
+                    currentUserEmail={employee.user?.email ?? null}
+                />
             </div>
 
             {/* Gap Analysis Table */}

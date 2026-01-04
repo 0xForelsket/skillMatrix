@@ -3,7 +3,7 @@
 
 import { headers } from "next/headers";
 import { db } from "@/db";
-import { employees } from "@/db/schema";
+import { employees, users } from "@/db/schema";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { logAudit, type AuditContext } from "@/lib/audit";
@@ -66,6 +66,7 @@ export async function getEmployee(id: string) {
                 site: true,
                 department: true,
                 role: true,
+                user: true,
                 skills: {
                     with: {
                         skill: true,
@@ -197,7 +198,7 @@ export async function regenerateBadgeToken(data: {
 				reason: reason || "Security rotation",
 			},
 			context,
-		});
+			});
 
 		revalidatePath(`/admin/employees/${employeeId}`);
 		revalidatePath("/admin/employees");
@@ -212,6 +213,180 @@ export async function regenerateBadgeToken(data: {
 	} catch (error) {
 		console.error("Failed to regenerate badge token:", error);
 		return { success: false, error: "Failed to regenerate badge token" };
+	}
+}
+
+/**
+ * Link a user account to an employee record.
+ * Allows the user to see their own skills and be identified as this employee.
+ */
+export async function linkUserToEmployee(data: {
+	employeeId: string;
+	userId: string;
+	performerId?: string;
+}) {
+	const { employeeId, userId, performerId } = data;
+	const context = await getContext(performerId);
+
+	try {
+		// Check if employee exists
+		const employee = await db.query.employees.findFirst({
+			where: eq(employees.id, employeeId),
+		});
+
+		if (!employee) {
+			return { success: false, error: "Employee not found" };
+		}
+
+		// Check if user exists
+		const user = await db.query.users.findFirst({
+			where: eq(users.id, userId),
+		});
+
+		if (!user) {
+			return { success: false, error: "User not found" };
+		}
+
+		// Check if user is already linked to another employee
+		const existingLink = await db.query.employees.findFirst({
+			where: eq(employees.userId, userId),
+		});
+
+		if (existingLink && existingLink.id !== employeeId) {
+			return {
+				success: false,
+				error: `User is already linked to employee: ${existingLink.name}`,
+			};
+		}
+
+		// Update the employee with the user link
+		const [updated] = await db
+			.update(employees)
+			.set({
+				userId,
+				updatedAt: new Date(),
+			})
+			.where(eq(employees.id, employeeId))
+			.returning();
+
+		await logAudit({
+			action: "update",
+			entityType: "employee",
+			entityId: employeeId,
+			oldValue: { userId: employee.userId },
+			newValue: { userId, linkedUserEmail: user.email },
+			context,
+		});
+
+		revalidatePath(`/admin/employees/${employeeId}`);
+		revalidatePath("/admin/employees");
+
+		return {
+			success: true,
+			data: {
+				employeeId: updated.id,
+				userId: updated.userId,
+			},
+		};
+	} catch (error) {
+		console.error("Failed to link user to employee:", error);
+		return { success: false, error: "Failed to link user to employee" };
+	}
+}
+
+/**
+ * Unlink a user account from an employee record.
+ */
+export async function unlinkUserFromEmployee(data: {
+	employeeId: string;
+	performerId?: string;
+}) {
+	const { employeeId, performerId } = data;
+	const context = await getContext(performerId);
+
+	try {
+		// Check if employee exists
+		const employee = await db.query.employees.findFirst({
+			where: eq(employees.id, employeeId),
+		});
+
+		if (!employee) {
+			return { success: false, error: "Employee not found" };
+		}
+
+		if (!employee.userId) {
+			return { success: false, error: "Employee has no linked user" };
+		}
+
+		const previousUserId = employee.userId;
+
+		// Remove the user link
+		const [updated] = await db
+			.update(employees)
+			.set({
+				userId: null,
+				updatedAt: new Date(),
+			})
+			.where(eq(employees.id, employeeId))
+			.returning();
+
+		await logAudit({
+			action: "update",
+			entityType: "employee",
+			entityId: employeeId,
+			oldValue: { userId: previousUserId },
+			newValue: { userId: null, reason: "User unlinked" },
+			context,
+		});
+
+		revalidatePath(`/admin/employees/${employeeId}`);
+		revalidatePath("/admin/employees");
+
+		return {
+			success: true,
+			data: {
+				employeeId: updated.id,
+			},
+		};
+	} catch (error) {
+		console.error("Failed to unlink user from employee:", error);
+		return { success: false, error: "Failed to unlink user from employee" };
+	}
+}
+
+/**
+ * Get list of users available for linking (not already linked to an employee).
+ */
+export async function getAvailableUsersForLinking() {
+	try {
+		// Get all users
+		const allUsers = await db.query.users.findMany({
+			orderBy: (users, { asc }) => [asc(users.email)],
+		});
+
+		// Get users that are already linked
+		const linkedUserIds = new Set(
+			(
+				await db.query.employees.findMany({
+					columns: { userId: true },
+					where: (t, { isNotNull }) => isNotNull(t.userId),
+				})
+			).map((e) => e.userId)
+		);
+
+		// Return users with linking status
+		const usersWithStatus = allUsers.map((user) => ({
+			id: user.id,
+			email: user.email,
+			appRole: user.appRole,
+			status: user.status,
+			isLinked: linkedUserIds.has(user.id),
+		}));
+
+		return { success: true, data: usersWithStatus };
+	} catch (error) {
+		console.error("Failed to get available users:", error);
+		return { success: false, error: "Failed to get available users" };
 	}
 }
 
